@@ -227,18 +227,57 @@ export default function RegistrationForm({ user, allUsers, onSave, mode }: Regis
         }
     }, [isMarriedFemale, spouse, setValue]);
 
-    const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files[0];
-            const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-            if (!validTypes.includes(file.type)) {
-                toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please upload a valid image file (jpg, png, webp).' });
-                return;
-            }
-            if (file.size > 20 * 1024 * 1024) { // 20MB limit
-                toast({ variant: 'destructive', title: 'File Too Large', description: 'File size must be less than 20MB.' });
-                return;
-            }
+    // helper function at top of file (add once above component if not added yet)
+async function compressImage(file: File, maxWidth = 400, maxHeight = 400, quality = 0.6): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = e => { img.src = e.target?.result as string; };
+    reader.onerror = reject;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      if (width > height && width > maxWidth) {
+        height *= maxWidth / width;
+        width = maxWidth;
+      } else if (height > maxHeight) {
+        width *= maxHeight / height;
+        height = maxHeight;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject('Canvas not supported');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        blob => { if (!blob) return reject('Compression failed'); resolve(blob); },
+        'image/jpeg',
+        quality
+      );
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// replace your onFileChange with this:
+const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+        const file = e.target.files[0];
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!validTypes.includes(file.type)) {
+            toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please upload a valid image file (jpg, png, webp).' });
+            return;
+        }
+        if (file.size > 20 * 1024 * 1024) { // still enforce 20MB hard cap
+            toast({ variant: 'destructive', title: 'File Too Large', description: 'File size must be less than 20MB.' });
+            return;
+        }
+
+        try {
+            // compress before upload
+            const compressedBlob = await compressImage(file, 400, 400, 0.6);
+            const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
 
             const reader = new FileReader();
             reader.addEventListener('load', () => {
@@ -248,10 +287,13 @@ export default function RegistrationForm({ user, allUsers, onSave, mode }: Regis
             reader.addEventListener('error', () => {
                 toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the file. Please try again.' });
             });
-            reader.readAsDataURL(file);
+            reader.readAsDataURL(compressedFile);
             if (fileInputRef.current) fileInputRef.current.value = "";
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Compression Failed', description: 'Could not compress the image. Please try again.' });
         }
-    };
+    }
+};
 
     const handleCropError = (message: string) => {
         toast({
