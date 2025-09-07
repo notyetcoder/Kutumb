@@ -227,72 +227,120 @@ export default function RegistrationForm({ user, allUsers, onSave, mode }: Regis
         }
     }, [isMarriedFemale, spouse, setValue]);
 
-    // helper function at top of file (add once above component if not added yet)
-async function compressImage(file: File, maxWidth = 400, maxHeight = 400, quality = 0.6): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = e => { img.src = e.target?.result as string; };
-    reader.onerror = reject;
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
-      if (width > height && width > maxWidth) {
-        height *= maxWidth / width;
-        width = maxWidth;
-      } else if (height > maxHeight) {
-        width *= maxHeight / height;
-        height = maxHeight;
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return reject('Canvas not supported');
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        blob => { if (!blob) return reject('Compression failed'); resolve(blob); },
-        'image/jpeg',
-        quality
-      );
-    };
-    reader.readAsDataURL(file);
+  // Replace your existing compressImage and onFileChange with this upgraded version.
+
+async function readFileAsDataURL(file: File): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = (e) => reject(new Error('FileReader error'));
+    r.onload = () => resolve(r.result as string);
+    r.readAsDataURL(file);
   });
 }
 
-// replace your onFileChange with this:
-const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-        const file = e.target.files[0];
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        if (!validTypes.includes(file.type)) {
-            toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please upload a valid image file (jpg, png, webp).' });
-            return;
-        }
-        if (file.size > 20 * 1024 * 1024) { // still enforce 20MB hard cap
-            toast({ variant: 'destructive', title: 'File Too Large', description: 'File size must be less than 20MB.' });
-            return;
-        }
+function calcTargetSize(origW: number, origH: number, maxW: number, maxH: number) {
+  let width = origW;
+  let height = origH;
+  if (width > height && width > maxW) {
+    height = Math.round(height * (maxW / width));
+    width = maxW;
+  } else if (height > maxH) {
+    width = Math.round(width * (maxH / height));
+    height = maxH;
+  }
+  return { width, height };
+}
 
-        try {
-            // compress before upload
-            const compressedBlob = await compressImage(file, 400, 400, 0.6);
-            const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+async function compressImage(file: File, maxWidth = 400, maxHeight = 400, quality = 0.6): Promise<Blob> {
+  try {
+    // Prefer createImageBitmap (more memory efficient on modern browsers)
+    if ('createImageBitmap' in window) {
+      const bitmap = await createImageBitmap(file);
+      const { width, height } = calcTargetSize(bitmap.width, bitmap.height, maxWidth, maxHeight);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas 2D context not available');
+      ctx.drawImage(bitmap, 0, 0, width, height);
 
-            const reader = new FileReader();
-            reader.addEventListener('load', () => {
-                setImageToCrop(reader.result as string);
-                setIsCropperOpen(true);
-            });
-            reader.addEventListener('error', () => {
-                toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the file. Please try again.' });
-            });
-            reader.readAsDataURL(compressedFile);
-            if (fileInputRef.current) fileInputRef.current.value = "";
-        } catch (err) {
-            toast({ variant: 'destructive', title: 'Compression Failed', description: 'Could not compress the image. Please try again.' });
-        }
+      // try toBlob, fallback to dataURL->fetch->blob if necessary
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (blob) return blob;
+
+      // fallback
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      return await (await fetch(dataUrl)).blob();
     }
+
+    // Fallback path (older browsers): load Image from dataURL
+    const dataUrl = await readFileAsDataURL(file);
+    const img = new Image();
+    img.src = dataUrl;
+
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = (e) => reject(new Error('Image decode/load failed'));
+    });
+
+    const { width, height } = calcTargetSize(img.width, img.height, maxWidth, maxHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D context not available');
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (blob) return blob;
+
+    const fallbackDataUrl = canvas.toDataURL('image/jpeg', quality);
+    return await (await fetch(fallbackDataUrl)).blob();
+  } catch (err: any) {
+    // Throw an Error instance so calling code can read .message
+    throw new Error(err?.message || String(err));
+  }
+}
+
+const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (e.target.files && e.target.files.length > 0) {
+    const file = e.target.files[0];
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please upload a valid image file (jpg, png, webp).' });
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'File Too Large', description: 'File size must be less than 20MB.' });
+      return;
+    }
+
+    try {
+      console.log('[upload] compressing file', file.type, file.size, file.name);
+      const compressedBlob = await compressImage(file, 400, 400, 0.6);
+      console.log('[upload] compressed blob size', compressedBlob.size);
+      const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageToCrop(reader.result as string);
+        setIsCropperOpen(true);
+      });
+      reader.addEventListener('error', (err) => {
+        console.error('File read error after compression', err);
+        toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the compressed file. Please try again.' });
+      });
+      reader.readAsDataURL(compressedFile);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err: any) {
+      console.error('Compression error', err);
+      toast({
+        variant: 'destructive',
+        title: 'Compression Failed',
+        description: err?.message || 'Could not compress the image. Please try again.',
+      });
+    }
+  }
 };
 
     const handleCropError = (message: string) => {
