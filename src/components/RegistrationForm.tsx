@@ -317,7 +317,7 @@ const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
 
     try {
       console.log('[upload] compressing file', file.type, file.size, file.name);
-      const compressedBlob = await compressImage(file, 400, 400, 0.6);
+      const compressedBlob = await compressImage(file, 800, 800, 0.8);
       console.log('[upload] compressed blob size', compressedBlob.size);
       const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
 
