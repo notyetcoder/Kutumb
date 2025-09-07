@@ -25,40 +25,77 @@ import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 
 
-async function compressImage(file: File, maxWidth = 800, maxHeight = 800, quality = 0.8): Promise<Blob> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const img = new Image();
-      img.src = URL.createObjectURL(file);
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height && width > maxWidth) {
-          height = Math.round(height * (maxWidth / width));
-          width = maxWidth;
-        } else if (height > maxHeight) {
-          width = Math.round(width * (maxHeight / height));
-          height = maxHeight;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return reject("Canvas error");
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob((blob) => {
-          if (blob) resolve(blob);
-          else reject("Compression failed");
-        }, "image/jpeg", quality);
-      };
-      img.onerror = reject;
-    } catch (err) {
-      reject(err);
-    }
+async function readFileAsDataURL(file: File): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = (e) => reject(new Error('FileReader error'));
+    r.onload = () => resolve(r.result as string);
+    r.readAsDataURL(file);
   });
+}
+
+function calcTargetSize(origW: number, origH: number, maxW: number, maxH: number) {
+  let width = origW;
+  let height = origH;
+  if (width > height && width > maxW) {
+    height = Math.round(height * (maxW / width));
+    width = maxW;
+  } else if (height > maxH) {
+    width = Math.round(width * (maxH / height));
+    height = maxH;
+  }
+  return { width, height };
+}
+
+async function compressImage(file: File, maxWidth = 400, maxHeight = 400, quality = 0.6): Promise<Blob> {
+  try {
+    // Prefer createImageBitmap (more memory efficient on modern browsers)
+    if ('createImageBitmap' in window) {
+      const bitmap = await createImageBitmap(file);
+      const { width, height } = calcTargetSize(bitmap.width, bitmap.height, maxWidth, maxHeight);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas 2D context not available');
+      ctx.drawImage(bitmap, 0, 0, width, height);
+
+      // try toBlob, fallback to dataURL->fetch->blob if necessary
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+      if (blob) return blob;
+
+      // fallback
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      return await (await fetch(dataUrl)).blob();
+    }
+
+    // Fallback path (older browsers): load Image from dataURL
+    const dataUrl = await readFileAsDataURL(file);
+    const img = new Image();
+    img.src = dataUrl;
+
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = (e) => reject(new Error('Image decode/load failed'));
+    });
+
+    const { width, height } = calcTargetSize(img.width, img.height, maxWidth, maxHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D context not available');
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (blob) return blob;
+
+    const fallbackDataUrl = canvas.toDataURL('image/jpeg', quality);
+    return await (await fetch(fallbackDataUrl)).blob();
+  } catch (err: any) {
+    // Throw an Error instance so calling code can read .message
+    throw new Error(err?.message || String(err));
+  }
 }
 
 const currentYear = new Date().getFullYear();
@@ -277,22 +314,32 @@ const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     }
 
     try {
-      // step 1: compress before crop (frontend ~150kb)
-      const compressed = await compressImage(file, 800, 800, 0.8);
-      const previewUrl = URL.createObjectURL(compressed);
+      console.log('[upload] compressing file', file.type, file.size, file.name);
+      const compressedBlob = await compressImage(file, 400, 400, 0.6);
+      console.log('[upload] compressed blob size', compressedBlob.size);
+      const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
 
-      setImageToCrop(previewUrl);
-      setIsCropperOpen(true);
-    } catch (err) {
-      console.error("Compression error before crop:", err);
-      toast({ variant: 'destructive', title: 'Compression Failed', description: 'Could not compress before crop.' });
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageToCrop(reader.result as string);
+        setIsCropperOpen(true);
+      });
+      reader.addEventListener('error', (err) => {
+        console.error('File read error after compression', err);
+        toast({ variant: 'destructive', title: 'File Read Error', description: 'Could not read the compressed file. Please try again.' });
+      });
+      reader.readAsDataURL(compressedFile);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err: any) {
+      console.error('Compression error', err);
+      toast({
+        variant: 'destructive',
+        title: 'Compression Failed',
+        description: err?.message || 'Could not compress the image. Please try again.',
+      });
     }
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 };
-
-
     
     const handleCropError = (message: string) => {
         toast({
@@ -303,21 +350,7 @@ const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         setIsCropperOpen(false);
     };
 
-    
-const onCropComplete = async (url: string) => {
-  try {
-    const res = await fetch(url);
-    const blob = await res.blob();
-
-    // step 2: compress cropped image for backend (~50kb)
-    const finalBlob = await compressImage(blob as File, 600, 600, 0.7);
-    const finalUrl = URL.createObjectURL(finalBlob);
-
-    setCroppedImageUrl(finalUrl);
-  } catch (err) {
-    handleCropError("Could not compress cropped image.");
-  }
-};
+    const onCropComplete = (url: string) => setCroppedImageUrl(url);
 
 
     const handleRemovePicture = () => { setCurrentImageUrl(null); setCroppedImageUrl(null); };
@@ -763,3 +796,5 @@ const onCropComplete = async (url: string) => {
         </Dialog>
     );
 }
+
+    
