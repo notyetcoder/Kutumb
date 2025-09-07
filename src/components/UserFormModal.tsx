@@ -266,34 +266,32 @@ export default function UserFormModal({ isOpen, onClose, user, allUsers, onSave,
 const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
   if (e.target.files && e.target.files.length > 0) {
     const file = e.target.files[0];
-    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!validTypes.includes(file.type)) {
-      toast({ variant: "destructive", title: "Invalid File Type", description: "Please upload jpg/png/webp." });
+      toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please upload a valid image file (jpg, png, webp).' });
       return;
     }
     if (file.size > 20 * 1024 * 1024) {
-      toast({ variant: "destructive", title: "File Too Large", description: "File must be under 20MB." });
+      toast({ variant: 'destructive', title: 'File Too Large', description: 'File size must be less than 20MB.' });
       return;
     }
+
     try {
-      const compressedBlob = await compressImage(file, 800, 800, 0.8); // ~100–150 KB
-      console.log("Pre-crop size:", (compressedBlob.size/1024).toFixed(1), "KB");
+      // step 1: compress before crop (frontend ~150kb)
+      const compressed = await compressImage(file, 800, 800, 0.8);
+      const previewUrl = URL.createObjectURL(compressed);
 
-      const compressedFile = new File([compressedBlob], file.name, { type: "image/jpeg" });
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImageToCrop(reader.result as string);
-        setIsCropperOpen(true);
-      };
-      reader.readAsDataURL(compressedFile);
-
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setImageToCrop(previewUrl);
+      setIsCropperOpen(true);
     } catch (err) {
       console.error("Compression error before crop:", err);
-      toast({ variant: "destructive", title: "Compression Failed", description: "Could not compress before crop." });
+      toast({ variant: 'destructive', title: 'Compression Failed', description: 'Could not compress before crop.' });
     }
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 };
+
 
     
     const handleCropError = (message: string) => {
@@ -311,18 +309,16 @@ const onCropComplete = async (url: string) => {
     const res = await fetch(url);
     const blob = await res.blob();
 
-    const finalBlob = await compressImage(new File([blob], "cropped.jpg"), 400, 400, 0.7); // ~50 KB
-    console.log("Final cropped size:", (finalBlob.size/1024).toFixed(1), "KB");
+    // step 2: compress cropped image for backend (~50kb)
+    const finalBlob = await compressImage(blob as File, 600, 600, 0.7);
+    const finalUrl = URL.createObjectURL(finalBlob);
 
-    const finalFile = new File([finalBlob], "cropped.jpg", { type: "image/jpeg" });
-    const reader = new FileReader();
-    reader.onload = () => setCroppedImageUrl(reader.result as string);
-    reader.readAsDataURL(finalFile);
+    setCroppedImageUrl(finalUrl);
   } catch (err) {
-    console.error("Crop compression error:", err);
-    handleCropError("Could not process cropped image.");
+    handleCropError("Could not compress cropped image.");
   }
 };
+
 
     const handleRemovePicture = () => { setCurrentImageUrl(null); setCroppedImageUrl(null); };
     const formatSingleNameInput = (value: string) => value ? value.toUpperCase().replace(/[^A-Z]/g, '') : '';
