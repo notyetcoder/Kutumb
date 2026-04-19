@@ -1,4 +1,3 @@
-
 'use client';
 
 import MainHeader from "@/components/MainHeader";
@@ -16,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { createSuggestion } from "@/actions/suggestions";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Image from "next/image";
 
 const suggestionSchema = z.object({
@@ -101,7 +100,7 @@ const SuggestionForm = ({ profileId, profileName }: { profileId: string; profile
   )
 }
 
-export default function ContactPage() {
+function ContactPageContent() {
   const searchParams = useSearchParams();
   const profileId = searchParams.get('profileId');
   const profileName = searchParams.get('profileName');
@@ -229,5 +228,17 @@ export default function ContactPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function ContactPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <ContactPageContent />
+    </Suspense>
   );
 }
