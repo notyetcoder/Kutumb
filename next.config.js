@@ -4,12 +4,10 @@ const nextConfig = {
     unoptimized: true,
   },
   typescript: {
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: true, // We added this in a later step
   },
   eslint: {
-    // This allows the Vercel build to pass even with ESLint errors
+    // This tells Vercel to skip ESLint errors and deploy anyway
     ignoreDuringBuilds: true,
   },
 };
