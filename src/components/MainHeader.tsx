@@ -1,33 +1,21 @@
 'use client';
 
-/**
- * Main Header Component
- * 
- * Navigation bar with:
- * - Home, Explore, Relationships (NEW), Admin tabs
- * - Language Selector (NEW)
- * - User profile/logout
- * - Responsive design
- * 
- * Updated to include the new Relationships feature.
- */
-
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@supabase/auth-helpers-react';
 import { LogOut, LogIn, Home, Compass, Trees, Settings } from 'lucide-react';
 import { LanguageSelector } from './LanguageSelector';
 
-export default function MainHeader() {
-  const user = useUser();
+interface MainHeaderProps {
+  user?: any;
+}
+
+export default function MainHeader({ user }: MainHeaderProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', { method: 'POST' });
-      if (response.ok) {
-        router.push('/');
-      }
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -37,10 +25,13 @@ export default function MainHeader() {
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-sm">
       <div className="container max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Left: Logo & Navigation */}
+          {/* Logo & Navigation */}
           <div className="flex items-center gap-8">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition-opacity">
+            <Link
+              href="/"
+              className="flex items-center gap-2 font-bold text-lg hover:opacity-80 transition-opacity"
+            >
               <span className="text-2xl">🌳</span>
               <span className="hidden sm:inline text-gray-900">Kutumb</span>
             </Link>
@@ -67,11 +58,11 @@ export default function MainHeader() {
                 <span className="hidden lg:inline">Explore</span>
               </Link>
 
-              {/* Relationships - NEW */}
+              {/* Relationships */}
               <Link
                 href="/relationships"
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-green-50 hover:text-green-700 transition-colors duration-200"
-                title="Relationships - Find connections"
+                title="Relationships"
               >
                 <Trees className="w-4 h-4" />
                 <span className="hidden lg:inline">Relationships</span>
@@ -91,9 +82,9 @@ export default function MainHeader() {
             </nav>
           </div>
 
-          {/* Right: Language Selector & User */}
+          {/* Right: Language & User */}
           <div className="flex items-center gap-3">
-            {/* Language Selector - NEW */}
+            {/* Language Selector */}
             <LanguageSelector />
 
             {/* User Info / Login */}

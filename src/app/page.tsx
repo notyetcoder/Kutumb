@@ -1,109 +1,126 @@
+'use client';
 
 import Link from 'next/link';
-import MainHeader from '@/components/MainHeader';
-import Footer from '@/components/Footer';
-import { ArrowRight, UserPlus, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { getAllUsersForPublic as getUsers } from '@/actions/users';
-import ProfileCarousel from '@/components/ProfileCarousel';
+import { Heart, Users, Zap, TreePine } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext';
 
+export default function HomePage() {
+  const { language } = useLanguage();
 
-const FeatureCard = ({ icon, title, description, href }: { icon: React.ReactNode, title: string, description: string, href: string }) => (
-    <Link href={href} className="group block" aria-label={`Learn more about ${title}`}>
-        <div className="bg-card/30 backdrop-blur-lg p-8 rounded-xl border border-white/10 text-left flex flex-col items-start transition-all duration-300 hover:border-primary/20 hover:scale-105 hover:shadow-2xl h-full animate-fade-in [animation-delay:800ms]">
-            <div className="p-3 bg-primary/20 rounded-full mb-4">
-                {icon}
+  const translations = {
+    gujarati: {
+      title: '🌳 કુટુંબમાં આપનું સ્વાગત છે',
+      subtitle: 'આપણો પરિવાર વૃક્ષ શોધો',
+      description: 'આપણા સમુદાયમાં તમારું સ્થાન શોધો અને જાણો કે આપણે ક્યા જોડાયેલા છીએ।',
+      explore: 'સમુદાયને અન્વેષણ કરો',
+      findRelations: 'સંબંધ શોધો',
+      features: [
+        { icon: '🔍', title: 'શોધ કરો', desc: 'સમુદાયમાં લોકો શોધો' },
+        { icon: '🌍', title: 'જોડાણ', desc: 'આપણે કેવી રીતે જોડાયેલા છીએ તે શોધો' },
+        { icon: '❤️', title: 'સંબંધ', desc: 'પરિવારની બંધતા જાણો' },
+        { icon: '🎊', title: 'સંસ્કાર', desc: 'આપણો વારસો સાચવો' },
+      ]
+    },
+    hindi: {
+      title: '🌳 कुटुंब में आपका स्वागत है',
+      subtitle: 'हमारा पारिवारिक वृक्ष खोजें',
+      description: 'हमारे समुदाय में अपना स्थान खोजें और जानें कि हम कैसे जुड़े हैं।',
+      explore: 'समुदाय का अन्वेषण करें',
+      findRelations: 'रिश्ता खोजें',
+      features: [
+        { icon: '🔍', title: 'खोजें', desc: 'समुदाय में लोगों को खोजें' },
+        { icon: '🌍', title: 'जुड़ाव', desc: 'जानें कि हम कैसे जुड़े हैं' },
+        { icon: '❤️', title: 'रिश्ता', desc: 'पारिवारिक बंधन जानें' },
+        { icon: '🎊', title: 'परंपरा', desc: 'हमारी विरासत को संरक्षित करें' },
+      ]
+    },
+    english: {
+      title: '🌳 Welcome to Kutumb',
+      subtitle: 'Discover Our Family Tree',
+      description: 'Find your place in our community and discover how we are all connected.',
+      explore: 'Explore Community',
+      findRelations: 'Find Relationships',
+      features: [
+        { icon: '🔍', title: 'Search', desc: 'Find people in our community' },
+        { icon: '🌍', title: 'Connection', desc: 'Discover how we are connected' },
+        { icon: '❤️', title: 'Relations', desc: 'Understand family bonds' },
+        { icon: '🎊', title: 'Heritage', desc: 'Preserve our legacy' },
+      ]
+    }
+  };
+
+  const t = translations[language];
+
+  return (
+    <div>
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 py-20 md:py-32">
+        <div className="container max-w-6xl mx-auto px-4 relative z-10">
+          <div className="text-center text-white space-y-6">
+            <h1 className="text-5xl md:text-7xl font-bold leading-tight">
+              {t.title}
+            </h1>
+            <p className="text-xl md:text-2xl opacity-90 max-w-2xl mx-auto">
+              {t.subtitle}
+            </p>
+            <p className="text-lg opacity-75 max-w-3xl mx-auto">
+              {t.description}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
+              <Link
+                href="/explore"
+                className="px-8 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                {t.explore}
+              </Link>
+              <Link
+                href="/relationships"
+                className="px-8 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                {t.findRelations}
+              </Link>
             </div>
-            <h3 className="text-xl font-bold mb-2 text-foreground">{title}</h3>
-            <p className="text-muted-foreground flex-grow">{description}</p>
-            <div className="mt-4 text-primary font-semibold flex items-center gap-2">
-                Learn more <ArrowRight className="h-4 w-4 transform transition-transform group-hover:translate-x-1" />
-            </div>
+          </div>
         </div>
-    </Link>
-);
+      </section>
 
-
-export const dynamic = 'force-dynamic';
-
-export default async function Home() {
-    const { users: allUsers } = await getUsers();
-    
-    const featuredUsers = allUsers
-      .filter(u => u.profilePictureUrl && !u.profilePictureUrl.includes('placehold.co'));
-
-
-    return (
-        <div className="flex flex-col min-h-screen bg-background text-foreground">
-            <div className="absolute inset-0 -z-10 h-full w-full bg-background">
-                <div aria-hidden="true" className="aurora-background absolute--full-bleed pointer-events-none" />
-            </div>
-            <MainHeader />
-            
-            <main className="flex-1">
-                <section className="flex flex-col items-center justify-center text-center pt-32 pb-24 px-4 container">
-                    <h1 lang="hi" className="font-headline text-5xl sm:text-7xl font-bold tracking-tight text-primary animate-fade-in [animation-delay:200ms]">
-                        वसुधैव कुटुम्बकम्
-                    </h1>
-                    <p className="mt-6 max-w-prose text-lg text-muted-foreground animate-fade-in [animation-delay:400ms]">
-                        An interactive family tree platform to connect roots, document heritage, and build a stronger future for our community.
-                    </p>
-                    <div className="mt-10 flex flex-col sm:flex-row items-center gap-4 animate-fade-in [animation-delay:600ms]">
-                        <Button asChild size="lg" className="shadow-lg shadow-primary/20">
-                            <Link href="/explore" aria-label="Explore the community family tree">
-                                Explore The Community <ArrowRight />
-                            </Link>
-                        </Button>
-                        <Button asChild variant="outline" size="lg" className="bg-background/50">
-                            <Link href="/register" aria-label="Register a new profile for the family tree">
-                                <UserPlus /> Register a Profile
-                            </Link>
-                        </Button>
-                    </div>
-                </section>
-
-                {featuredUsers.length > 0 && (
-                     <section className="py-16">
-                        <div className="container mx-auto">
-                            <h2 className="text-3xl font-bold text-center mb-2">Meet the Community</h2>
-                            <p className="text-muted-foreground text-center mb-8">Discover the faces and families that make our community whole.</p>
-                            <ProfileCarousel users={featuredUsers} allUsers={allUsers} />
-                        </div>
-                    </section>
-                )}
-
-                <section className="py-24 bg-background/20">
-                    <div className="container mx-auto px-4">
-                        <div className="text-center mb-16">
-                             <h2 className="text-4xl font-bold tracking-tight text-foreground">A Unified Digital Village</h2>
-                             <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
-                                Our platform is designed to bring our community closer, one connection at a time.
-                             </p>
-                        </div>
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                            <FeatureCard 
-                                href="/explore"
-                                icon={<Search className="h-8 w-8 text-primary" />}
-                                title="Explore Connections"
-                                description="Visually navigate through generations and discover how families are interconnected within the community."
-                            />
-                            <FeatureCard 
-                                href="/register"
-                                icon={<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-primary"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
-                                title="Add Your Branch"
-                                description="Easily add new family members and link them to existing profiles to grow the collective tree."
-                            />
-                            <FeatureCard 
-                                href="/contact"
-                                icon={<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-primary"><path d="M12 21v-2a4 4 0 0 0-4-4H4a4 4 0 0 0-4 4v2"/><circle cx="8" cy="7" r="4"/><path d="M16 21v-2a4 4 0 0 0-4-4h-4"/><path d="M22 17a2 2 0 1 0-4 0 2 2 0 0 0 4 0Z"/></svg>}
-                                title="Preserve Heritage"
-                                description="Create a lasting digital record of our heritage for future generations to explore and appreciate."
-                            />
-                         </div>
-                    </div>
-                </section>
-            </main>
-            <Footer />
+      {/* Features Section */}
+      <section className="py-16 md:py-24">
+        <div className="container max-w-6xl mx-auto px-4">
+          <div className="grid md:grid-cols-4 gap-8">
+            {t.features.map((feature, idx) => (
+              <div key={idx} className="text-center p-6 rounded-lg hover:shadow-lg transition-shadow">
+                <div className="text-4xl mb-4">{feature.icon}</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{feature.title}</h3>
+                <p className="text-gray-600">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
-    );
+      </section>
+
+      {/* CTA Section */}
+      <section className="bg-gray-50 py-16 md:py-24">
+        <div className="container max-w-6xl mx-auto px-4 text-center space-y-8">
+          <h2 className="text-4xl font-bold text-gray-900">
+            {language === 'gujarati' ? 'તૈયાર છો શરુ કરવા માટે?' : language === 'hindi' ? 'शुरू करने के लिए तैयार हैं?' : 'Ready to Get Started?'}
+          </h2>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/explore"
+              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors inline-block"
+            >
+              {language === 'gujarati' ? 'સમુદાય બ્રાઉজ કરો' : language === 'hindi' ? 'समुदाय ब्राउज़ करें' : 'Browse Community'}
+            </Link>
+            <Link
+              href="/relationships"
+              className="px-8 py-3 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors inline-block"
+            >
+              {language === 'gujarati' ? 'સંબંધ શોધો' : language === 'hindi' ? 'रिश्ता खोजें' : 'Find Relationships'}
+            </Link>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 }

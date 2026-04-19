@@ -1,21 +1,7 @@
 'use client';
 
-/**
- * Language Context
- * 
- * Manages the global language state for the entire application.
- * Provides:
- * - Current language selection (gujarati, hindi, english)
- * - Function to change language
- * - Persistence to localStorage
- * - Default: Gujarati
- * 
- * Usage:
- * const { language, setLanguage } = useLanguage();
- */
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Language } from '@/lib/relationshipData';
+import { Language } from '@/lib/types';
 
 interface LanguageContextType {
   language: Language;
@@ -32,7 +18,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load language preference from localStorage on mount
+  // Load from localStorage on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -46,7 +32,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Save language preference to localStorage when it changes
   const setLanguage = (lang: Language) => {
     try {
       setLanguageState(lang);
@@ -63,12 +48,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/**
- * Hook to use the language context
- * 
- * Usage:
- * const { language, setLanguage } = useLanguage();
- */
 export function useLanguage() {
   const context = useContext(LanguageContext);
   if (!context) {

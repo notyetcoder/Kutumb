@@ -1,15 +1,5 @@
 'use client';
 
-/**
- * Language Selector Component
- * 
- * Minimal, Google Translate-style language switcher.
- * Shows current language and provides dropdown to switch.
- * 
- * Usage:
- * <LanguageSelector />
- */
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import { ChevronDown } from 'lucide-react';
@@ -19,7 +9,6 @@ export function LanguageSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -41,14 +30,12 @@ export function LanguageSelector() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors duration-200 border border-transparent hover:border-gray-300"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors duration-200"
         title="Change language"
         aria-label="Language selector"
       >
-        {/* Language icon - Globe */}
         <svg
           className="w-4 h-4"
           fill="none"
@@ -63,14 +50,11 @@ export function LanguageSelector() {
           />
         </svg>
 
-        {/* Current language display */}
         <span className="text-xs font-semibold">{currentLang?.code.slice(0, 2).toUpperCase()}</span>
 
-        {/* Chevron icon */}
         <ChevronDown className="w-3.5 h-3.5" />
       </button>
 
-      {/* Dropdown Menu */}
       {isOpen && (
         <div
           className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-max"
@@ -112,5 +96,3 @@ export function LanguageSelector() {
     </div>
   );
 }
-
-export default LanguageSelector;

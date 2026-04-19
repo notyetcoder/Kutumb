@@ -1,28 +1,6 @@
-/**
- * Relationship Data & Translations
- * 
- * This file contains all 44 relationships with translations in:
- * - Gujarati (primary/default)
- * - Hindi (secondary)
- * - English (fallback)
- * 
- * Source of truth for all relationship terminology across the entire application.
- * Update here to change relationship names everywhere.
- * 
- * !! DO NOT MODIFY RELATIONSHIP NAMES WITHOUT APPROVAL !!
- */
-
-export type Language = 'gujarati' | 'hindi' | 'english';
-
-export interface RelationshipTranslation {
-  gujarati: string;
-  hindi: string;
-  english: string;
-  category: 'basic' | 'grandparent' | 'grandchild' | 'uncle-aunt' | 'cousin' | 'in-laws';
-}
+import { RelationshipTranslation } from './types';
 
 export const RELATIONSHIP_DATA: Record<string, RelationshipTranslation> = {
-  // =============== BASIC RELATIONSHIPS ===============
   father: {
     gujarati: 'પિતા',
     hindi: 'पिता',
@@ -59,160 +37,144 @@ export const RELATIONSHIP_DATA: Record<string, RelationshipTranslation> = {
     english: 'Sister',
     category: 'basic'
   },
-
-  // =============== GRANDPARENT RELATIONSHIPS ===============
   paternal_grandfather: {
     gujarati: 'દાદા',
     hindi: 'दादा',
-    english: 'Grandfather (Father\'s side)',
+    english: 'Grandfather (Paternal)',
     category: 'grandparent'
   },
   paternal_grandmother: {
     gujarati: 'દાદી',
     hindi: 'दादी',
-    english: 'Grandmother (Father\'s side)',
+    english: 'Grandmother (Paternal)',
     category: 'grandparent'
   },
   maternal_grandfather: {
     gujarati: 'નાના',
     hindi: 'नाना',
-    english: 'Grandfather (Mother\'s side)',
+    english: 'Grandfather (Maternal)',
     category: 'grandparent'
   },
   maternal_grandmother: {
     gujarati: 'નાની',
     hindi: 'नानी',
-    english: 'Grandmother (Mother\'s side)',
+    english: 'Grandmother (Maternal)',
     category: 'grandparent'
   },
-
-  // =============== GRANDCHILD RELATIONSHIPS ===============
   grandson_from_son: {
     gujarati: 'પૌત્ર',
     hindi: 'पोता',
-    english: 'Grandson (Son\'s son)',
+    english: 'Grandson (Son\'s Son)',
     category: 'grandchild'
   },
   granddaughter_from_son: {
     gujarati: 'પૌત્રી',
     hindi: 'पोती',
-    english: 'Granddaughter (Son\'s daughter)',
+    english: 'Granddaughter (Son\'s Daughter)',
     category: 'grandchild'
   },
   grandson_from_daughter: {
     gujarati: 'દોહિત્ર',
     hindi: 'नाती',
-    english: 'Grandson (Daughter\'s son)',
+    english: 'Grandson (Daughter\'s Son)',
     category: 'grandchild'
   },
   granddaughter_from_daughter: {
     gujarati: 'દોહિત્રી',
     hindi: 'नातिन',
-    english: 'Granddaughter (Daughter\'s daughter)',
+    english: 'Granddaughter (Daughter\'s Daughter)',
     category: 'grandchild'
   },
-
-  // =============== UNCLE/AUNT RELATIONSHIPS ===============
   paternal_uncle: {
     gujarati: 'કાકા',
     hindi: 'चाचा',
-    english: 'Father\'s brother',
+    english: 'Paternal Uncle',
     category: 'uncle-aunt'
   },
-  paternal_aunt_wife_of_uncle: {
+  paternal_aunt_wife: {
     gujarati: 'કાકી',
     hindi: 'चाची',
-    english: 'Wife of Kaka',
+    english: 'Paternal Uncle\'s Wife',
     category: 'uncle-aunt'
   },
   elder_paternal_uncle: {
     gujarati: 'મોટા કાકા',
     hindi: 'बड़े चाचा',
-    english: 'Elder father\'s brother',
-    category: 'uncle-aunt'
-  },
-  elder_paternal_aunt: {
-    gujarati: 'મોટી કાકી',
-    hindi: 'बड़ी चाची',
-    english: 'Elder uncle\'s wife',
+    english: 'Elder Paternal Uncle',
     category: 'uncle-aunt'
   },
   maternal_uncle: {
     gujarati: 'મામા',
     hindi: 'मामा',
-    english: 'Mother\'s brother',
+    english: 'Maternal Uncle',
     category: 'uncle-aunt'
   },
-  maternal_aunt_wife_of_uncle: {
+  maternal_aunt_wife: {
     gujarati: 'મામી',
     hindi: 'मामी',
-    english: 'Wife of Mama',
+    english: 'Maternal Uncle\'s Wife',
     category: 'uncle-aunt'
   },
   paternal_aunt: {
     gujarati: 'ફોઈ',
     hindi: 'बुआ',
-    english: 'Father\'s sister',
+    english: 'Paternal Aunt',
     category: 'uncle-aunt'
   },
-  husband_of_paternal_aunt: {
+  paternal_aunt_husband: {
     gujarati: 'ફૂફા',
     hindi: 'फूफा',
-    english: 'Husband of father\'s sister',
+    english: 'Paternal Aunt\'s Husband',
     category: 'uncle-aunt'
   },
   maternal_aunt: {
     gujarati: 'માસી',
     hindi: 'मौसी',
-    english: 'Mother\'s sister',
+    english: 'Maternal Aunt',
     category: 'uncle-aunt'
   },
-  husband_of_maternal_aunt: {
+  maternal_aunt_husband: {
     gujarati: 'માસા',
     hindi: 'मौसा',
-    english: 'Husband of Masi',
+    english: 'Maternal Aunt\'s Husband',
     category: 'uncle-aunt'
   },
-
-  // =============== COUSIN RELATIONSHIPS ===============
   paternal_male_cousin: {
     gujarati: 'કાકાનો દીકરો',
     hindi: 'चाचा का बेटा',
-    english: 'Cousin (Paternal male)',
+    english: 'Paternal Cousin (Male)',
     category: 'cousin'
   },
   paternal_female_cousin: {
     gujarati: 'કાકાની દીકરી',
     hindi: 'चाचा की बेटी',
-    english: 'Cousin (Paternal female)',
+    english: 'Paternal Cousin (Female)',
     category: 'cousin'
   },
   maternal_male_cousin: {
     gujarati: 'મામાનો દીકરો',
     hindi: 'मामा का बेटा',
-    english: 'Cousin (Maternal male)',
+    english: 'Maternal Cousin (Male)',
     category: 'cousin'
   },
   maternal_female_cousin: {
     gujarati: 'મામાની દીકરી',
     hindi: 'मामा की बेटी',
-    english: 'Cousin (Maternal female)',
+    english: 'Maternal Cousin (Female)',
     category: 'cousin'
   },
-  maternal_aunt_male_cousin: {
+  aunt_side_male_cousin: {
     gujarati: 'માસીનો દીકરો',
     hindi: 'मौसी का बेटा',
-    english: 'Cousin',
+    english: 'Aunt\'s Son (Cousin)',
     category: 'cousin'
   },
-  maternal_aunt_female_cousin: {
+  aunt_side_female_cousin: {
     gujarati: 'માસીની દીકરી',
     hindi: 'मौसी की बेटी',
-    english: 'Cousin',
+    english: 'Aunt\'s Daughter (Cousin)',
     category: 'cousin'
   },
-
-  // =============== IN-LAW RELATIONSHIPS ===============
   husband: {
     gujarati: 'પતિ',
     hindi: 'पति',
@@ -228,112 +190,92 @@ export const RELATIONSHIP_DATA: Record<string, RelationshipTranslation> = {
   son_in_law: {
     gujarati: 'જમાઈ',
     hindi: 'दामाद',
-    english: 'Son-in-law',
+    english: 'Son-in-Law',
     category: 'in-laws'
   },
   daughter_in_law: {
     gujarati: 'પુત્રવધૂ',
     hindi: 'बहू',
-    english: 'Daughter-in-law',
+    english: 'Daughter-in-Law',
     category: 'in-laws'
   },
   father_in_law: {
     gujarati: 'સસરા',
     hindi: 'ससुर',
-    english: 'Father-in-law',
+    english: 'Father-in-Law',
     category: 'in-laws'
   },
   mother_in_law: {
     gujarati: 'સાસુ',
     hindi: 'सास',
-    english: 'Mother-in-law',
+    english: 'Mother-in-Law',
     category: 'in-laws'
   },
   wife_brother: {
     gujarati: 'સાળો',
     hindi: 'साला',
-    english: 'Wife\'s brother',
+    english: 'Wife\'s Brother',
     category: 'in-laws'
   },
   wife_sister: {
     gujarati: 'સાળી',
     hindi: 'साली',
-    english: 'Wife\'s sister',
+    english: 'Wife\'s Sister',
     category: 'in-laws'
   },
   sister_husband: {
     gujarati: 'જીજાજી',
     hindi: 'जीजा',
-    english: 'Sister\'s husband',
+    english: 'Sister\'s Husband',
     category: 'in-laws'
   },
   husband_younger_brother: {
     gujarati: 'દિયર',
     hindi: 'देवर',
-    english: 'Husband\'s younger brother',
+    english: 'Husband\'s Younger Brother',
     category: 'in-laws'
   },
   husband_elder_brother: {
     gujarati: 'જેઠ',
     hindi: 'जेठ',
-    english: 'Husband\'s elder brother',
+    english: 'Husband\'s Elder Brother',
     category: 'in-laws'
   },
   husband_elder_brother_wife: {
     gujarati: 'જેઠાણી',
     hindi: 'जेठानी',
-    english: 'Elder brother\'s wife',
+    english: 'Elder Brother\'s Wife',
     category: 'in-laws'
   },
   husband_younger_brother_wife: {
     gujarati: 'દેરાણી',
     hindi: 'देवरानी',
-    english: 'Younger brother\'s wife',
+    english: 'Younger Brother\'s Wife',
     category: 'in-laws'
   },
   husband_sister: {
     gujarati: 'નણંદ',
     hindi: 'ननद',
-    english: 'Husband\'s sister',
+    english: 'Husband\'s Sister',
     category: 'in-laws'
   },
   brother_wife: {
     gujarati: 'ભાભી',
     hindi: 'भाभी',
-    english: 'Brother\'s wife',
+    english: 'Brother\'s Wife',
     category: 'in-laws'
   }
 };
 
-/**
- * Get all relationships as an array
- */
-export function getAllRelationships(): Array<{ key: string; data: RelationshipTranslation }> {
+export function getAllRelationships() {
   return Object.entries(RELATIONSHIP_DATA).map(([key, data]) => ({
     key,
     data
   }));
 }
 
-/**
- * Get relationships by category
- */
-export function getRelationshipsByCategory(
-  category: RelationshipTranslation['category']
-): Array<{ key: string; data: RelationshipTranslation }> {
+export function getRelationshipsByCategory(category: string) {
   return Object.entries(RELATIONSHIP_DATA)
     .filter(([, data]) => data.category === category)
     .map(([key, data]) => ({ key, data }));
 }
-
-/**
- * Get all categories
- */
-export const RELATIONSHIP_CATEGORIES = [
-  'basic',
-  'grandparent',
-  'grandchild',
-  'uncle-aunt',
-  'cousin',
-  'in-laws'
-] as const;
