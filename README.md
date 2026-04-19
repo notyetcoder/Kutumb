@@ -1,551 +1,195 @@
-# 🌳 Relationship Finder - Vasudha Connect Enhancement
 
-A complete, production-ready feature for the **Vasudha Connect (Kutumb)** community family tree application. This module enables users to discover how any two community members are related through an intelligent pathfinding algorithm.
+# Vasudha Connect - Community Family Tree
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/typescript-%3E%3D5.0-blue.svg)](https://www.typescriptlang.org)
-[![Next.js](https://img.shields.io/badge/next.js-14%2B-black.svg)](https://nextjs.org)
+Vasudha Connect is a modern, open-source web application designed to build, explore, and visualize family relationships within a close-knit community. It was created with the vision of providing a simple yet powerful tool for villages and community groups to document their heritage and understand the intricate web of connections that bind them together.
 
----
+The application is built to be intuitive for public users and powerful for administrators, ensuring data integrity while fostering a sense of shared history.
 
-## 🎯 Overview
+## ✨ Core Features
 
-The **Relationship Finder** enables community members to:
-- ✅ Select any two people from the community
-- ✅ Discover their exact relationship (cousin, uncle, in-laws, etc.)
-- ✅ See a visual path showing how they're connected
-- ✅ Understand degrees of separation
-- ✅ Access from any device (mobile, tablet, desktop)
+### For Puusilic Users
+- **Profile Registration:** An easy-to-use form allows community members to register themselves and their immediate family.
+- **Dynamic Dropdowns:** The registration form features smart, dynamic dropdowns for surnames and family groups, simplifying data entry and improving consistency.
+- **Interactive Profile Pages:** Each person has a detailed profile page that visually displays their immediate family, including parents, spouse, children, siblings, and grandparents.
+- **Deep Relationship Mapping:** The profile page goes beyond the immediate family, showing extended relationships like in-laws, uncles, and aunts.
+- **Community Exploration:** A powerful search and filter interface allows users to easily find anyone in the community.
 
-### Key Features
-- 🚀 **Fast Performance**: <200ms for 1000 users, <500ms for 10,000 users
-- 🎨 **Beautiful UI**: Responsive design with gradient themes
-- 📱 **Mobile Optimized**: Works seamlessly on all devices
-- 🔒 **Secure**: Built with best practices for data privacy
-- 📊 **Scalable**: Handles 50,000+ community members
-- 💰 **Zero Cost**: Runs entirely on free infrastructure
+### For Administrators
+- **Secure Admin Panel:** A protected admin area with a secure, email and password-based login system.
+- **Interactive Dashboard:** A central dashboard provides key statistics at a glance (Total Users, Deceased Members, etc.). The dashboard is fully interactive, allowing admins to click on stats and charts to view filtered lists of users.
+- **Comprehensive User Management:** A detailed table allows admins to view, edit, and delete any user profile.
+- **Effortless Relationship Linking:** Admins can easily link relatives (parents, spouses) through an intuitive modal interface, ensuring the family tree remains accurate and connected.
+- **Bulk Actions:** Admins can select multiple users to perform bulk actions, such as marking them as deceased or deleting them.
+- **Data Export:** Admins can export the entire user database to an Excel file with a single click.
 
----
+## 🎥 Live Demo
 
-## 🚀 Quick Start
+You can watch a complete video walkthrough of the application's features here:
 
-### Prerequisites
-- Node.js >= 18.0.0
-- npm or yarn
-- Existing Kutumb/Vasudha Connect project with:
-  - Next.js 14+
-  - React 18+
-  - Supabase database
-  - Tailwind CSS
-  - shadcn/ui components
+[Watch the Demo on YouTube]
 
-### Installation (5 Minutes)
+## 🚀 Technology Stack
 
-1. **Copy Source Files to Your Project**
-   ```bash
-   # Copy the core algorithm
-   cp src/lib/relationship-finder.ts /path/to/kutumb-main/src/lib/
+The application is built on a modern, robust, and open-source technology stack, chosen for its performance, developer experience, and scalability.
 
-   # Copy the page component
-   cp src/app/relationships/page.tsx /path/to/kutumb-main/src/app/relationships/
+- **Framework:** **Next.js (App Router)** - For a fast, server-rendered React application.
+- **Language:** **TypeScript** - For type safety and improved code quality.
+- **Styling:**
+  - **Tailwind CSS:** A utility-first CSS framework for rapid UI development.
+  - **shadcn/ui:** A collection of beautifully designed, reusable UI components.
+- **Backend & Data:**
+  - **Supabase:** The backend is powered by Supabase for database storage, providing a scalable and secure data solution.
+  - **Next.js Server Actions:** All backend logic (creating, reading, updating, deleting data) is handled through Server Actions, providing a seamless and secure way to interact with the Supabase database.
+- **State Management:** Primarily managed with React hooks (`useState`, `useMemo`, `useEffect`) for local component state.
+- **Icons:** **Lucide React** - For a clean and consistent icon set.
 
-   # Copy the React components
-   cp -r src/app/relationships/_components/* \
-     /path/to/kutumb-main/src/app/relationships/_components/
-   ```
+## 🧠 Application Logic
 
-2. **Create Database Indexes (Supabase Dashboard)**
+### User ID Generation
+Each user is assigned a unique, random 8-character alphanumeric ID upon registration. This ensures that every user has a stable, non-personally identifiable identifier that can be used for linking and database lookups. The system automatically checks for collisions to guarantee uniqueness.
+
+### Image Handling
+To optimize storage and performance, all user-uploaded profile pictures are handled through a robust pipeline:
+- **In-Browser Processing:** Pictures are first processed through an in-browser cropper and compressor, resizing them to a maximum of 400px and compressing them to approximately 50KB.
+- **Supabase Storage:** The processed image is then uploaded directly to a dedicated **Supabase Storage** bucket (`profile-pictures`). This keeps the database lightweight and leverages a scalable solution for file storage.
+- **Clean URLs:** Only the clean, public URL for the stored image is saved in the user's database record.
+
+### Relationship Linking
+The application's core strength lies in its relationship logic, managed in `src/lib/user-utils.ts`.
+- Relationships are stored using unique IDs (`fatherId`, `motherId`, `spouseId`).
+- When two users are linked as spouses, the action is **bidirectional**: both profiles are updated to reflect the new marital status and link to each other.
+- Profile pages dynamically fetch and display all relevant relatives by traversing these ID links across the entire user dataset.
+
+## 🔮 Future Enhancements
+
+While the core functionality is stable and robust, here are some potential features to deepen the application's value and further the mission of preserving community heritage:
+
+### 1. The "Living History" Feature: Stories & Anecdotes
+- **Concept:** Introduce a "Stories" or "Memories" section on each profile page where admins and family members can add short anecdotes, biographical details, or cherished memories about a person.
+- **Impact:** This would transform the application from a structural database into a **collaborative digital history book**. It gives context and personality to the names on the tree and allows future generations to feel a much deeper connection to their ancestors.
+
+### 2. The "Data Curator" Dashboard
+- **Concept:** Enhance the Admin Dashboard with a "Data Health" or "Attention Needed" widget. This would proactively flag potential data issues and provide direct links to filtered lists.
+- **Examples:**
+    - Profiles marked 'married' but missing a linked spouse.
+    - Profiles with missing parent information.
+    - Profiles still using a placeholder profile picture.
+    - Potential duplicate entries (e.g., similar names and parent names).
+- **Impact:** This turns the admin's role from reactive data entry to proactive **data curation**. It automates the difficult task of finding errors and inconsistencies, which is crucial for maintaining the long-term accuracy and integrity of the family tree as it grows.
+
+### 3. The "Relationship Path" Tool
+- **Concept:** Create a simple tool with two dropdowns where a user can select any two people in the community. Upon clicking "Find Connection," the app would display the most direct relationship path between them in plain language.
+- **Example Output:** "Ramesh is the paternal uncle (Kaka) of Suresh."
+- **Impact:** This provides a powerful "aha!" moment for users by directly answering the common question, "How are we related?" It encourages exploration and helps people understand the intricate web of community connections without the complexity of rendering a full graphical tree.
+
+## Local Development Setup
+
+To run this project on your local machine, you will need a Supabase project.
+
+### 1. Set up Your Supabase Project
+
+1.  Go to [supabase.com](https://supabase.com) and create a new project.
+2.  Once your project is ready, navigate to the **SQL Editor** section.
+3.  Create the necessary tables by running the SQL schema provided in `supabase_schema.sql` in the project root.
+4.  **Set Up Storage Policies:**
+    - In your Supabase project dashboard, navigate to **Storage** and create a new **public** bucket named `profile-pictures`.
+    - Go back to the **SQL Editor** and run the following three commands to set the security policies for the new bucket. This allows your application to securely upload and retrieve images:
+
+    ```sql
+    -- Policy 1: Allow public, anonymous read access to all images
+    -- This allows anyone to view profile pictures.
+    CREATE POLICY "Public Read Access"
+    ON storage.objects FOR SELECT
+    TO public
+    USING ( bucket_id = 'profile-pictures' );
+
+    -- Policy 2: Allow anonymous users to upload new images
+    -- This is required for the public registration form to work.
+    CREATE POLICY "Anonymous Insert Access"
+    ON storage.objects FOR INSERT
+    TO public
+    WITH CHECK ( bucket_id = 'profile-pictures' );
+
+    -- Policy 3: Allow authenticated users (admins) to update and delete any image
+    -- This allows admins to manage all profile pictures from the admin panel.
+    CREATE POLICY "Admin Full Access"
+    ON storage.objects FOR ALL
+    TO authenticated
+    USING ( bucket_id = 'profile-pictures' )
+    WITH CHECK ( bucket_id = 'profile-pictures' );
+    ```
+5. **Set Up User Table Policies:**
+   - In the **SQL Editor**, run the following commands. These policies ensure that all user profiles are visible to the public, that anyone can create a new profile, and that only **authenticated users (admins)** can modify or delete profiles.
+
    ```sql
-   -- Go to SQL Editor and run this
-   CREATE INDEX IF NOT EXISTS idx_users_surname ON public.users(surname);
-   CREATE INDEX IF NOT EXISTS idx_users_family ON public.users(family);
-   CREATE INDEX IF NOT EXISTS idx_users_fatherId ON public.users(fatherId);
-   CREATE INDEX IF NOT EXISTS idx_users_motherId ON public.users(motherId);
-   CREATE INDEX IF NOT EXISTS idx_users_spouseId ON public.users(spouseId);
-   CREATE INDEX IF NOT EXISTS idx_users_name_surname ON public.users(name, surname);
-   CREATE INDEX IF NOT EXISTS idx_users_isDeleted ON public.users(isDeleted);
-   CREATE INDEX IF NOT EXISTS idx_users_active ON public.users(isDeleted, isDeceased);
+   -- 1. Public Read-Only Access
+   -- Allows anyone to view user profiles.
+   CREATE POLICY "Allow public read access to all users"
+   ON public.users FOR SELECT
+   TO public
+   USING (true);
+
+   -- 2. Public Insert Access
+   -- Allows anyone to create a new user profile (i.e., register themselves).
+   CREATE POLICY "Allow public insert access for new users"
+   ON public.users FOR INSERT
+   TO public
+   WITH CHECK (true);
+
+   -- 3. Admin Update Access (IMPORTANT)
+   -- Allows authenticated users (admins) to update any user profile.
+   CREATE POLICY "Allow admin update access to all users"
+   ON public.users FOR UPDATE
+   TO authenticated
+   USING (true)
+   WITH CHECK (true);
+
+   -- 4. Admin Delete Access (IMPORTANT)
+   -- Allows authenticated users (admins) to delete any user profile.
+   CREATE POLICY "Allow admin delete access to all users"
+   ON public.users FOR DELETE
+   TO authenticated
+   USING (true);
    ```
 
-3. **Update Navigation (MainHeader.tsx)**
-   ```typescript
-   // Add this to your navigation menu
-   <Link href="/relationships" className="flex items-center gap-2">
-     🌳 Relationships
-   </Link>
-   ```
-
-4. **Test Locally**
-   ```bash
-   npm run dev
-   # Visit: http://localhost:9002/relationships
-   ```
-
-5. **Deploy**
-   ```bash
-   git add .
-   git commit -m "Add relationship finder feature"
-   git push origin main
-   ```
-
----
-
-## 📁 Project Structure
-
-```
-kutumb-relationship-finder/
-├── README.md                          # This file
-├── CONTRIBUTING.md                    # Contribution guidelines
-├── LICENSE                            # MIT License
-├── .gitignore                         # Git ignore rules
-│
-├── src/
-│   ├── lib/
-│   │   └── relationship-finder.ts     # Core BFS algorithm
-│   │       ├── findRelationshipPath()        # Main pathfinding function
-│   │       ├── getRelationshipType()        # Determine relationship name
-│   │       ├── getAncestors()              # Find all ancestors
-│   │       └── getDescendants()            # Find all descendants
-│   │
-│   └── app/
-│       └── relationships/
-│           ├── page.tsx                # Main page component
-│           │   ├── Header with info cards
-│           │   └── RelationshipFinderClient component
-│           │
-│           └── _components/
-│               ├── RelationshipFinderClient.tsx       # Main logic
-│               │   ├── User selection handling
-│               │   ├── Relationship finding
-│               │   └── Error handling
-│               │
-│               ├── RelationshipPathVisualization.tsx  # Results display
-│               │   ├── Path visualization
-│               │   ├── Success/failure states
-│               │   └── Responsive layout
-│               │
-│               └── UserSelectionModal.tsx            # User picker
-│                   ├── Search functionality
-│                   ├── User list display
-│                   └── Selection handling
-│
-└── docs/
-    ├── README_START_HERE.md            # Documentation index
-    ├── FINAL_ACTION_PLAN.md            # Quick start guide
-    ├── FILE_STRUCTURE_GUIDE.md         # File organization
-    ├── DATABASE_SETUP.md               # Database optimization
-    ├── IMPLEMENTATION_GUIDE.md         # Detailed walkthrough
-    ├── IMPROVEMENT_GUIDE.md            # Strategy & enhancements
-    ├── ADDITIONAL_IMPROVEMENTS.md      # Extra features & code
-    ├── TROUBLESHOOTING.md              # Common issues & solutions
-    └── COMPLETE_SUMMARY.md             # Reference guide
-```
-
----
-
-## 🛠️ Technology Stack
-
-| Technology | Version | Purpose |
-|-----------|---------|---------|
-| Next.js | 14+ | React framework |
-| React | 18+ | UI library |
-| TypeScript | 5+ | Type safety |
-| Tailwind CSS | 3+ | Styling |
-| shadcn/ui | Latest | Component library |
-| Supabase | Latest | Database & auth |
-| Lucide React | Latest | Icons |
-
----
-
-## 📊 Algorithm Details
-
-### Breadth-First Search (BFS)
-
-The relationship finder uses **Breadth-First Search** to find the shortest path between two people:
-
-```
-Person A → [Check all relatives] → [Check their relatives] → Person B
-         ↓
-    Found shortest path with relationship type
-```
-
-**Why BFS?**
-- ✅ Finds shortest path (most direct relationship)
-- ✅ Efficient O(V + E) time complexity
-- ✅ Fast even with thousands of users
-- ✅ Memory efficient
-
-**How It Works:**
-1. Start from Person A
-2. Get all their relatives (parents, spouse, children, siblings)
-3. If Person B found → Return the path
-4. Otherwise → Add their relatives to the queue
-5. Repeat until found or max depth (6 generations)
-
-**Time Complexity:**
-- 100 users: <50ms
-- 1,000 users: <200ms
-- 10,000 users: <500ms
-- 50,000 users: ~1-2 seconds
-
----
-
-## 🎨 UI/UX Features
-
-### Main Page (`/relationships`)
-- Beautiful gradient header (purple to blue)
-- Info cards explaining features
-- Two-person selection interface
-- Swap button to reverse selection
-- Clear/Reset functionality
-
-### User Selection Modal
-- Search by name, surname, or family
-- Real-time filtering
-- User profile pictures
-- Birth year information
-- Selected indicator
-
-### Results Visualization
-- Relationship type prominently displayed
-- Visual connection path with photos
-- Natural language explanation
-- Desktop: Horizontal path
-- Mobile: Vertical path
-- Success/failure states
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Ensure your existing `.env.local` has:
-```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-```
-
-### Database Schema
-
-The feature assumes a `public.users` table with:
-```typescript
-interface User {
-  id: string;
-  name: string;
-  surname: string;
-  family?: string;
-  gender: 'male' | 'female';
-  maritalStatus: 'single' | 'married';
-  fatherId?: string | null;
-  motherId?: string | null;
-  spouseId?: string | null;
-  profilePictureUrl: string;
-  birthYear?: string;
-  isDeceased?: boolean;
-  isDeleted?: boolean;
-}
-```
-
----
-
-## 📈 Performance Optimization
-
-### Database Indexes (Critical!)
-The provided SQL creates 8 indexes that make queries **10-50x faster**:
-- Surname search
-- Family group filtering
-- Parent/spouse relationship traversal
-- Composite indexes for common queries
-
-### Caching Strategy
-- Results are cached in memory
-- Same relationship lookups are instant
-- Cache auto-clears on user updates
-
-### Image Optimization
-- Profile pictures: Max 350px width
-- Format: WebP (30% smaller)
-- Compression: 0.8 quality
-- Results in ~40% storage savings
-
----
-
-## 🔒 Security
-
-### Built-in Protections
-- ✅ Input validation with Zod
-- ✅ XSS protection (React escaping)
-- ✅ SQL injection protection (Supabase)
-- ✅ CORS configured correctly
-- ✅ Supabase RLS policies enabled
-
-### Best Practices Applied
-- Rate limiting examples provided
-- Input sanitization examples
-- Error handling without exposing internals
-- User data privacy respected
-
----
-
-## 📱 Responsive Design
-
-### Desktop (1024px+)
-- Horizontal user selection cards
-- Horizontal connection path
-- Side-by-side layout
-
-### Tablet (768px-1023px)
-- Adjusted spacing
-- Touch-friendly buttons (48px+)
-- Stacked cards
-
-### Mobile (< 768px)
-- Full-width cards
-- Vertical connection path
-- Large touch targets
-- Optimized fonts
-
----
-
-## 🧪 Testing
-
-### Manual Testing Checklist
-
-**Direct Relationships:**
-- [ ] Father to child → Shows "Child"
-- [ ] Mother to child → Shows "Child"
-- [ ] Spouse to spouse → Shows "Spouse"
-- [ ] Sibling to sibling → Shows "Sibling"
-
-**Extended Relationships:**
-- [ ] Grandparent to grandchild → Shows "Grandchild"
-- [ ] Cousin to cousin → Shows "First Cousin"
-- [ ] Uncle/Aunt to niece/nephew → Shows correctly
-
-**Error Handling:**
-- [ ] No relationship found → Shows "Not Related"
-- [ ] Same person → Shows "Same Person"
-- [ ] Missing data → Shows error gracefully
-
-**Performance:**
-- [ ] Search <200ms with 1000 users
-- [ ] Modal loads instantly
-- [ ] No console errors
-
-**Mobile:**
-- [ ] Responsive on iPhone
-- [ ] Responsive on Android
-- [ ] Touch interactions work
-- [ ] Text readable at all sizes
-
----
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-
-```bash
-# Your project automatically deploys on push
-git push origin main
-# Vercel detects changes and rebuilds
-# Feature available in 2-3 minutes
-```
-
-### Environment Setup
-
-```bash
-# In Vercel Dashboard:
-1. Add environment variables
-2. Point to your Supabase project
-3. Enable automatic deployments
-```
-
-### Database Indexes
-
-```bash
-# In Supabase Dashboard:
-1. SQL Editor
-2. Paste the index creation SQL
-3. Click Run
-```
-
----
-
-## 📚 Documentation
-
-Comprehensive documentation is included in `/docs/`:
-
-| Document | Purpose | Read When |
-|----------|---------|-----------|
-| README_START_HERE.md | Overview & index | First |
-| FINAL_ACTION_PLAN.md | Quick start | Before implementing |
-| FILE_STRUCTURE_GUIDE.md | File locations | Before copying files |
-| DATABASE_SETUP.md | Performance indexes | Before testing |
-| IMPLEMENTATION_GUIDE.md | Detailed walkthrough | During setup |
-| IMPROVEMENT_GUIDE.md | Strategy & enhancements | After Week 1 |
-| ADDITIONAL_IMPROVEMENTS.md | Extra features | For planning next |
-| TROUBLESHOOTING.md | Common issues | When stuck |
-| COMPLETE_SUMMARY.md | Reference | Anytime |
-
----
-
-## 🎓 Learning Resources
-
-### Concepts Covered
-- Breadth-First Search algorithms
-- React hooks (useState, useEffect, useMemo)
-- Next.js App Router
-- TypeScript type safety
-- Database optimization
-- Responsive design patterns
-- Error handling best practices
-
-### External Resources
-- [Next.js Documentation](https://nextjs.org/docs)
-- [React Documentation](https://react.dev)
-- [Supabase Documentation](https://supabase.com/docs)
-- [Tailwind CSS](https://tailwindcss.com/docs)
-- [TypeScript Handbook](https://www.typescriptlang.org/docs)
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**"Cannot find module 'relationship-finder'"**
-```bash
-# Verify file location
-ls -la src/lib/relationship-finder.ts
-
-# Restart dev server
-npm run dev
-```
-
-**"No relationship found" when there should be one**
-```
-Check if relationships are linked:
-1. Go to profile page
-2. Edit person's family section
-3. Link parents/spouse
-4. Try again
-```
-
-**Slow searches**
-```sql
--- Verify indexes exist
-SELECT * FROM pg_indexes WHERE tablename = 'users';
-
--- If missing, run the index SQL again
-```
-
-**See docs/TROUBLESHOOTING.md for 30+ solutions**
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Areas for Contribution
-- [ ] Additional relationship types
-- [ ] Performance optimizations
-- [ ] UI/UX improvements
-- [ ] Documentation enhancements
-- [ ] Localization support
-- [ ] Testing improvements
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-## 💡 Future Enhancements
-
-### Planned Features (See docs/IMPROVEMENT_GUIDE.md)
-- [ ] "Find My Cousins" feature
-- [ ] Ancestry timeline visualization
-- [ ] Export family tree as PDF
-- [ ] Share relationship on social media
-- [ ] Family statistics dashboard
-- [ ] Multi-language support
-- [ ] Advanced genealogy search
-
-### Community Requested
-Submit feature requests as GitHub issues!
-
----
-
-## 📊 Success Metrics
-
-After implementation, track:
-- Users per day using the feature
-- Average search time
-- Error rate (should be <0.1%)
-- Mobile vs desktop usage
-- Most searched relationships
-
----
-
-## 💬 Community & Support
-
-- **Issues**: Report bugs on GitHub Issues
-- **Discussions**: Start discussions for ideas
-- **Documentation**: Check `/docs/` folder first
-- **Community**: Share your enhancements!
-
----
-
-## 🙏 Acknowledgments
-
-Built with:
-- ❤️ for the Vasudha Connect community
-- 🔬 using proven algorithms (BFS)
-- 📚 with comprehensive documentation
-- 🚀 for production-ready quality
-
----
-
-## 📈 Statistics
-
-- **Algorithm**: Breadth-First Search (BFS)
-- **Performance**: <500ms for 10,000 users
-- **Bundle Impact**: +7KB gzipped
-- **Database Impact**: +8 indexes, 0 new tables
-- **Cost**: $0 forever
-- **Scalability**: 50,000+ users on free tier
-
----
-
-## 🎉 Getting Started
-
-1. **Read**: `docs/README_START_HERE.md`
-2. **Plan**: `docs/FINAL_ACTION_PLAN.md`
-3. **Copy**: Source files to your project
-4. **Setup**: Database indexes
-5. **Test**: Locally with `npm run dev`
-6. **Deploy**: Push to GitHub → Vercel auto-deploys
-
-**That's it! Feature is live! 🚀**
-
----
-
-**Questions?** See the comprehensive documentation in `/docs/` folder.
-
-**Happy building!** 💻✨
-
----
-
-<div align="center">
-
-**Made with ❤️ for the Vasudha Connect Community**
-
-[⬆ back to top](#relationship-finder---vasudha-connect-enhancement)
-
-</div>
+### 2. Get Supabase Credentials
+
+1.  In your Supabase project dashboard, go to **Settings** -> **API**.
+2.  You will find your **Project URL** and your `anon` **public key**.
+3.  You will also need your `service_role` **secret key**. Keep this key secure and never expose it on the client-side.
+4.  Create a `.env.local` file in the root of your project by copying `.env` and add these keys:
+    ```
+    NEXT_PUBLIC_SUPABASE_URL=YOUR_PROJECT_URL
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_PUBLIC_KEY
+    SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_SECRET_KEY
+    ```
+
+### 3. Install and Run
+
+1.  **Install Dependencies:**
+    Open your terminal, navigate to the project's root directory, and run:
+    ```bash
+    npm install
+    ```
+
+2.  **Run the Development Server:**
+    Once the installation is complete, start the Next.js development server:
+    ```bash
+    npm run dev
+    ```
+
+3.  **Open the Application:**
+    Open your web browser and navigate to [http://localhost:9002](http://localhost:9002) to see the application in action.
+
+### 4. (Optional) Clean Up Existing Data
+If you have existing data that was entered before the latest formatting rules were applied, you may have extra spaces or full names stored in columns that should only contain first names.
+
+To fix this, you can run the SQL script provided in `supabase_cleanup.sql`.
+
+1.  Open the `supabase_cleanup.sql` file in the project root.
+2.  Copy the entire content of the file.
+3.  Go to the **SQL Editor** in your Supabase dashboard.
+4.  Paste the script into the editor and click **"Run"**. This will clean up your data to match the new, consistent format.
+
+### Admin Access
+To access the admin panel, navigate to `/admin/login` and use the email and password you used to sign up with Supabase Authentication. You may need to create an admin user first via the Supabase dashboard.
