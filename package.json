@@ -37,6 +37,9 @@
 
     "node-xlsx": "^0.24.0",
 
+    "sharp": "^0.33.0",
+    "sanitize-html": "^2.13.0",
+
     "@radix-ui/react-alert-dialog": "^1.0.0",
     "@radix-ui/react-slot": "^1.0.0",
     "@radix-ui/react-checkbox": "^1.0.0",
