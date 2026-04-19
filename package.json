@@ -1,11 +1,1 @@
-{
-  "name": "your-package-name",
-  "version": "1.0.0",
-  "private": true,
-  "dependencies": {
-    "@supabase/ssr": "^1.0.0",
-    "@supabase/auth-helpers-react": "^0.4.6"
-    // other dependencies...
-  }
-  // other configurations...
-}
+{\n  "name": "your-project-name",\n  "version": "1.0.0",\n  "description": "A brief description of your project",\n  "main": "index.js",\n  "scripts": {\n    "test": "echo 'Error: no test specified' && exit 1"\n  },\n  "keywords": [],\n  "author": "Your Name",\n  "license": "ISC",\n  "dependencies": {\n    "@supabase/auth-helpers-react": "^0.4.6",\n    // other dependencies here\n  }\n}
