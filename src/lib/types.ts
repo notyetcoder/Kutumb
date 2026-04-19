@@ -1,52 +1,58 @@
-/**
- * Core Type Definitions
- * Used throughout the Kutumb application
- */
 
-export type Gender = 'male' | 'female';
-export type MaritalStatus = 'single' | 'married' | 'widowed';
-export type Language = 'gujarati' | 'hindi' | 'english';
+export const Gender = {
+    Male: 'male',
+    Female: 'female',
+} as const;
+export type Gender = typeof Gender[keyof typeof Gender];
+
+export const MaritalStatus = {
+    Single: 'single',
+    Married: 'married',
+} as const;
+export type MaritalStatus = typeof MaritalStatus[keyof typeof MaritalStatus];
 
 export interface User {
-  id: string;
-  name: string;
-  surname: string;
-  maidenName?: string;
-  gender: Gender;
-  maritalStatus: MaritalStatus;
-  fatherId?: string | null;
-  motherId?: string | null;
-  spouseId?: string | null;
-  birthMonth?: string;
-  birthYear?: string;
-  profilePictureUrl?: string;
-  description?: string;
-  isDeceased?: boolean;
-  deathDate?: string;
-  family?: string;
-  created_at?: string;
-  isDeleted?: boolean;
+    id: string;
+    surname: string;
+    maidenName: string;
+    name: string;
+    family?: string;
+    gender: Gender;
+    maritalStatus: MaritalStatus;
+    fatherId?: string | null;
+    motherId?: string | null;
+    spouseId?: string | null;
+    fatherName?: string | null;
+    motherName?: string | null;
+    spouseName?: string | null;
+    birthMonth?: string;
+    birthYear?: string;
+    profilePictureUrl: string;
+    description?: string;
+    isDeceased?: boolean;
+    deathDate?: string;
+    created_at?: string;
 }
 
-export interface RelationshipResult {
-  found: boolean;
-  relationship?: string;
-  explanation?: string;
-  path?: Array<{ id: string; name: string }>;
-  distance?: number;
+export interface Story {
+    id: string;
+    user_id: string;
+    content: string;
+    author_id: string;
+    created_at: string;
+    updated_at: string;
 }
 
-export interface RelationshipTranslation {
-  gujarati: string;
-  hindi: string;
-  english: string;
-  category: 'basic' | 'grandparent' | 'grandchild' | 'uncle-aunt' | 'cousin' | 'in-laws';
+export interface Admin {
+    id: string;
+    username: string;
+    password_hash: string;
 }
 
-export interface AuthUser {
-  id: string;
-  email: string;
-  user_metadata?: {
-    name?: string;
-  };
-}
+export type ActionResponse = {
+  success: boolean;
+  message?: string;
+  userId?: string;
+};
+
+    
