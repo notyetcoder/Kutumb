@@ -2,10 +2,8 @@
 
 /**
  * Relationships Page - ENHANCED
- * 
- * Beautiful, emotional landing page for the Relationship Finder feature.
- * 
- * Features:
+ * * Beautiful, emotional landing page for the Relationship Finder feature.
+ * * Features:
  * - Gradient header with Gujarati messaging
  * - Feature cards explaining the purpose
  * - Relationship finder client component
@@ -16,8 +14,8 @@
 
 import { RelationshipFinderClient } from './_components/RelationshipFinderClient';
 import { useLanguage } from '@/context/LanguageContext';
-import { Heart, Users, Zap, TreePine, Info } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Zap, Info } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function RelationshipsPage() {
   const { language } = useLanguage();
@@ -213,7 +211,7 @@ export default function RelationshipsPage() {
               {t.subtitle}
             </p>
             <p className="text-base md:text-lg opacity-75 italic max-w-xl mx-auto pt-2">
-              "{t.tagline}"
+              &quot;{t.tagline}&quot;
             </p>
           </div>
         </div>
