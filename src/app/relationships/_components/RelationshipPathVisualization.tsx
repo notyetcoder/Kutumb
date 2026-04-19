@@ -1,206 +1,173 @@
 'use client';
 
-import { User, RelationshipResult, Language } from '@/lib/types';
-import { getRelationshipLabel } from '@/lib/relationshipTranslator';
-import { Heart, ArrowRight, MapPin } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { User } from '@/lib/types';
+import { CheckCircle2, XCircle } from 'lucide-react';
 
 interface Props {
-  relationship: RelationshipResult;
-  personA: User | null;
-  personB: User | null;
-  language: Language;
+  relationship: any;
+  users: User[];
 }
 
-export function RelationshipPathVisualization({
+export default function RelationshipPathVisualization({
   relationship,
-  personA,
-  personB,
-  language
+  users,
 }: Props) {
-  if (!relationship) return null;
-
-  const getClosenessColor = (distance?: number): string => {
-    if (!distance) return 'bg-gray-100';
-    if (distance === 1) return 'bg-red-100 border-red-300';
-    if (distance <= 2) return 'bg-orange-100 border-orange-300';
-    if (distance <= 3) return 'bg-yellow-100 border-yellow-300';
-    return 'bg-blue-100 border-blue-300';
-  };
-
-  const translations = {
-    gujarati: {
-      connectionFound: '🔗 તમારો સંબંધ',
-      howConnected: 'આપણે ક્યા જોડાયેલા છીએ?',
-      relationshipType: 'સંબંધનો પ્રકાર',
-      connectionPath: 'જોડાણનો માર્ગ',
-      notRelated: '❌ સંબંધિત નથી'
-    },
-    hindi: {
-      connectionFound: '🔗 आपका रिश्ता',
-      howConnected: 'हम कहाँ जुड़े हैं?',
-      relationshipType: 'रिश्ते का प्रकार',
-      connectionPath: 'कनेक्शन पथ',
-      notRelated: '❌ संबंधित नहीं'
-    },
-    english: {
-      connectionFound: '🔗 Your Relationship',
-      howConnected: 'How are we connected?',
-      relationshipType: 'Relationship Type',
-      connectionPath: 'Connection Path',
-      notRelated: '❌ Not Related'
-    }
-  };
-
-  const t = translations[language];
+  const userMap = new Map(users.map(u => [u.id, u]));
 
   if (!relationship.found) {
     return (
-      <div className="p-6 border-2 border-red-200 bg-red-50 rounded-lg">
-        <div className="text-center space-y-4">
-          <div className="text-5xl">❌</div>
-          <h3 className="text-xl font-bold text-red-900">{t.notRelated}</h3>
-          <p className="text-red-700">{relationship.explanation || 'No direct relationship found'}</p>
-        </div>
-      </div>
+      <Card className="border-2 border-red-200 bg-red-50 shadow-lg">
+        <CardContent className="pt-8">
+          <div className="flex items-center gap-4 text-center">
+            <XCircle className="w-12 h-12 text-red-600 flex-shrink-0" />
+            <div>
+              <p className="text-lg font-semibold text-red-900">Not Related</p>
+              <p className="text-red-700 mt-1">{relationship.explanation}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Main Result Card */}
-      <div className={`p-6 border-2 rounded-lg ${getClosenessColor(relationship.distance)}`}>
-        <div className="space-y-4">
+      <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 shadow-xl">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-7 h-7 text-green-600" />
+            <CardTitle className="text-2xl">✨ Connection Found!</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
           <div>
-            <h3 className="text-2xl font-bold flex items-center gap-2">
-              {t.connectionFound}
-            </h3>
-            <p className="text-sm text-gray-600">{t.howConnected}</p>
+            <p className="text-gray-600 text-sm font-medium mb-2 tracking-wider">
+              RELATIONSHIP TYPE
+            </p>
+            <p className="text-4xl font-bold text-green-700">
+              {relationship.relationship}
+            </p>
+            {relationship.distance && relationship.distance > 0 && (
+              <p className="text-sm text-gray-600 mt-2">
+                {relationship.distance} connection{relationship.distance !== 1 ? 's' : ''}
+              </p>
+            )}
           </div>
 
-          {/* Relationship Type */}
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-600 mb-2 uppercase">{t.relationshipType}</h4>
-            <div className="flex items-center gap-3">
-              <Heart className="w-5 h-5 text-red-500 flex-shrink-0" />
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {getRelationshipLabel(relationship.relationship, language)}
-                </p>
-                {relationship.explanation && (
-                  <p className="text-sm text-gray-600 mt-1">{relationship.explanation}</p>
-                )}
+          <div className="bg-white rounded-lg p-4 border-2 border-green-200 shadow-sm">
+            <p className="text-lg font-semibold text-gray-900 leading-relaxed">
+              {relationship.explanation}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Path Visualization */}
+      {relationship.path && relationship.path.length > 1 && (
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              📍 Connection Path
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Desktop View - Horizontal Path */}
+            <div className="hidden sm:block overflow-x-auto">
+              <div className="flex items-center gap-2 justify-center py-8 min-w-min px-4">
+                {relationship.path.map((node: any, index: number) => {
+                  const user = userMap.get(node.userId);
+                  const isLast = index === relationship.path.length - 1;
+
+                  return (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="text-center flex-shrink-0">
+                        {user?.profilePictureUrl && (
+                          <img
+                            src={user.profilePictureUrl}
+                            alt={user.name}
+                            className="w-16 h-16 rounded-full object-cover mx-auto mb-2 border-3 border-purple-300 shadow-md"
+                          />
+                        )}
+                        <p className="font-semibold text-sm w-20 truncate">
+                          {user?.name}
+                        </p>
+                        <Badge
+                          variant="secondary"
+                          className="text-xs mt-1 mx-auto inline-block bg-purple-100 text-purple-800"
+                        >
+                          {node.relation}
+                        </Badge>
+                      </div>
+
+                      {!isLast && (
+                        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                          <div className="text-2xl">→</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
 
-          {/* Connection Path */}
-          {relationship.path && relationship.path.length > 0 && (
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-600 mb-4 uppercase flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                {t.connectionPath}
-              </h4>
+            {/* Mobile View - Vertical Path */}
+            <div className="sm:hidden space-y-4">
+              {relationship.path.map((node: any, index: number) => {
+                const user = userMap.get(node.userId);
+                const isLast = index === relationship.path.length - 1;
 
-              {/* Desktop View - Horizontal */}
-              <div className="hidden md:flex overflow-x-auto gap-2 pb-2">
-                {relationship.path.map((person, idx) => (
-                  <div key={person.id} className="flex items-center flex-shrink-0">
-                    <div className="flex flex-col items-center">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                        {person.name.charAt(0)}
-                      </div>
-                      <p className="text-xs text-gray-700 mt-1 max-w-16 text-center truncate">
-                        {person.name}
-                      </p>
+                return (
+                  <div key={index}>
+                    <div className="text-center">
+                      {user?.profilePictureUrl && (
+                        <img
+                          src={user.profilePictureUrl}
+                          alt={user.name}
+                          className="w-14 h-14 rounded-full object-cover mx-auto mb-2 border-3 border-purple-300"
+                        />
+                      )}
+                      <p className="font-semibold text-sm">{user?.name}</p>
+                      <Badge
+                        variant="secondary"
+                        className="text-xs mt-1 mx-auto inline-block bg-purple-100 text-purple-800"
+                      >
+                        {node.relation}
+                      </Badge>
                     </div>
-                    {idx < relationship.path!.length - 1 && (
-                      <div className="mx-2 text-gray-400">
-                        <ArrowRight className="w-4 h-4" />
-                      </div>
+
+                    {!isLast && (
+                      <div className="flex justify-center text-2xl my-2">↓</div>
                     )}
                   </div>
-                ))}
-              </div>
-
-              {/* Mobile View - Vertical */}
-              <div className="md:hidden space-y-2">
-                {relationship.path.map((person, idx) => (
-                  <div key={person.id}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                        {person.name.charAt(0)}
-                      </div>
-                      <p className="text-sm text-gray-700 font-medium">{person.name}</p>
-                    </div>
-                    {idx < relationship.path!.length - 1 && (
-                      <div className="ml-5 my-1 text-gray-400">↓</div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          )}
+          </CardContent>
+        </Card>
+      )}
 
-          {/* Stats */}
-          {relationship.distance !== undefined && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-lg p-4 border border-gray-200 text-center">
-                <div className="text-3xl font-bold text-blue-600">{relationship.distance}</div>
-                <p className="text-xs text-gray-600 mt-1">
-                  {language === 'gujarati' ? 'પેઢીઓ' : language === 'hindi' ? 'पीढ़ियां' : 'Generations'}
-                </p>
-              </div>
-              <div className="bg-white rounded-lg p-4 border border-gray-200 text-center">
-                <div className="text-3xl">
-                  {relationship.distance === 1 ? '❤️' : relationship.distance === 2 ? '🧡' : '💛'}
-                </div>
-                <p className="text-xs text-gray-600 mt-1">
-                  {relationship.distance === 1 ? 'ખૂબ જ નજીક' : relationship.distance === 2 ? 'નજીક' : 'સંબંધી'}
-                </p>
-              </div>
+      {/* Summary Stats */}
+      <Card className="bg-blue-50 border border-blue-200">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-600">Connection Type</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {relationship.relationship}
+              </p>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* People Cards */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {personA && (
-          <div className="p-4 border-2 border-blue-200 bg-blue-50 rounded-lg">
-            <div className="flex items-center gap-4">
-              {personA.profilePictureUrl && (
-                <img
-                  src={personA.profilePictureUrl}
-                  alt={personA.name}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-blue-300"
-                />
-              )}
-              <div>
-                <p className="font-semibold text-gray-900">{personA.name}</p>
-                <p className="text-sm text-gray-600">{personA.surname}</p>
-              </div>
+            <div>
+              <p className="text-sm text-gray-600">Degrees of Separation</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {relationship.distance}
+              </p>
             </div>
           </div>
-        )}
-
-        {personB && (
-          <div className="p-4 border-2 border-green-200 bg-green-50 rounded-lg">
-            <div className="flex items-center gap-4">
-              {personB.profilePictureUrl && (
-                <img
-                  src={personB.profilePictureUrl}
-                  alt={personB.name}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-green-300"
-                />
-              )}
-              <div>
-                <p className="font-semibold text-gray-900">{personB.name}</p>
-                <p className="text-sm text-gray-600">{personB.surname}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

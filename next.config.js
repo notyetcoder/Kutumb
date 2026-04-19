@@ -1,15 +1,39 @@
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    unoptimized: true,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
   typescript: {
-    ignoreBuildErrors: true, // We added this in a later step
+    ignoreBuildErrors: true,
   },
   eslint: {
-    // This tells Vercel to skip ESLint errors and deploy anyway
     ignoreDuringBuilds: true,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+        port: '',
+        pathname: '/**',
+      },
+       {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+      },
+    ],
   },
 };
 
 module.exports = nextConfig;
+
+    

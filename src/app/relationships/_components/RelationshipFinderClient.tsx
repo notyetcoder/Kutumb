@@ -1,50 +1,59 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { User, RelationshipResult } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ArrowRightLeft, Loader2, Search } from 'lucide-react';
+import { User } from '@/lib/types';
 import { findRelationshipPath } from '@/lib/relationship-finder';
-import { RelationshipPathVisualization } from './RelationshipPathVisualization';
-import { UserSelectionModal } from './UserSelectionModal';
-import { useLanguage } from '@/context/LanguageContext';
-import { ArrowRightLeft, Loader2, Search, AlertCircle } from 'lucide-react';
+import { getUsers } from '@/actions/users';
+import RelationshipPathVisualization from './RelationshipPathVisualization';
+import UserSelectionModal from './UserSelectionModal';
 
-interface RelationshipFinderClientProps {
-  users: User[];
-  loading?: boolean;
-}
-
-export function RelationshipFinderClient({ users, loading = false }: RelationshipFinderClientProps) {
-  const { language } = useLanguage();
+export default function RelationshipFinderClient() {
   const [personA, setPersonA] = useState<User | null>(null);
   const [personB, setPersonB] = useState<User | null>(null);
-  const [relationship, setRelationship] = useState<RelationshipResult | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [relationship, setRelationship] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [finding, setFinding] = useState(false);
+  const [showPersonAModal, setShowPersonAModal] = useState(false);
+  const [showPersonBModal, setShowPersonBModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectingFor, setSelectingFor] = useState<'a' | 'b' | null>(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setError(null);
+        const data = await getUsers();
+        // Filter out deleted and deceased users for easier selection
+        const active = data.filter(u => !u.isDeleted);
+        setUsers(active);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        setError('Failed to load community data. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   const handleFindRelationship = async () => {
     if (!personA || !personB) {
-      setError(language === 'gujarati' ? 'કૃપા કરીને બંને લોકો પસંદ કરો' : 'Please select both people');
+      setError('Please select both people');
       return;
     }
 
-    if (personA.id === personB.id) {
-      setRelationship({
-        found: true,
-        relationship: 'same',
-        explanation: 'Same person'
-      });
-      return;
-    }
-
+    setFinding(true);
+    setError(null);
     try {
-      setFinding(true);
-      setError(null);
       const result = findRelationshipPath(personA, personB, users);
       setRelationship(result);
-    } catch (err) {
-      console.error('Error:', err);
-      setError('Error finding relationship');
+    } catch (error) {
+      console.error('Error finding relationship:', error);
+      setError('An error occurred while finding the relationship. Please try again.');
     } finally {
       setFinding(false);
     }
@@ -66,157 +75,195 @@ export function RelationshipFinderClient({ users, loading = false }: Relationshi
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-purple-600" />
+          <p className="text-gray-600">Loading community data...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Selection Cards */}
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* Person A */}
-        <div className="p-6 border border-gray-200 rounded-lg hover:shadow-lg transition-shadow">
-          <div className="space-y-3">
-            <div className="text-sm font-semibold text-gray-600">
-              {language === 'gujarati' ? 'વ્યક્તિ ૧' : language === 'hindi' ? 'व्यक्ति 1' : 'Person 1'}
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Main Card */}
+      <Card className="border-2 border-purple-200 shadow-xl">
+        <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50">
+          <CardTitle className="text-2xl">Select Two People</CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
+            Available users: <span className="font-semibold">{users.length}</span>
+          </p>
+        </CardHeader>
+        <CardContent className="pt-8 space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              ⚠️ {error}
             </div>
+          )}
+
+          {/* Person A Selection */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              👤 Person A
+            </label>
             {personA ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 p-4 bg-purple-50 rounded-lg border-2 border-purple-300 shadow-sm">
                 {personA.profilePictureUrl && (
                   <img
                     src={personA.profilePictureUrl}
                     alt={personA.name}
-                    className="w-12 h-12 rounded-full object-cover"
+                    className="w-14 h-14 rounded-full object-cover border-2 border-purple-400"
                   />
                 )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{personA.name}</p>
-                  <p className="text-xs text-gray-600">{personA.surname}</p>
+                <div className="flex-1">
+                  <p className="font-bold text-lg">{personA.name} {personA.surname}</p>
+                  {personA.family && (
+                    <p className="text-sm text-gray-600">{personA.family}</p>
+                  )}
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPersonAModal(true)}
+                  className="text-purple-600 border-purple-600 hover:bg-purple-100"
+                >
+                  Change
+                </Button>
               </div>
             ) : (
-              <div className="text-center py-4 text-gray-500">
-                <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
-              </div>
+              <Button
+                onClick={() => setShowPersonAModal(true)}
+                className="w-full py-8 text-lg font-semibold rounded-lg border-2 border-dashed border-purple-300 hover:bg-purple-50 hover:border-purple-500"
+                variant="outline"
+              >
+                <Search className="w-5 h-5 mr-2" />
+                Select Person A
+              </Button>
             )}
-            <button
-              onClick={() => setSelectingFor('a')}
-              className="w-full px-3 py-2 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              {personA ? 'બદલો' : 'પસંદ કરો'}
-            </button>
           </div>
-        </div>
 
-        {/* Swap Button */}
-        <div className="flex items-center justify-center">
-          <button
-            onClick={handleSwap}
-            disabled={!personA || !personB}
-            className="rounded-full w-12 h-12 p-0 flex items-center justify-center border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Swap"
-          >
-            <ArrowRightLeft className="w-5 h-5" />
-          </button>
-        </div>
+          {/* Swap Button */}
+          <div className="flex justify-center">
+            <Button
+              onClick={handleSwap}
+              variant="outline"
+              size="sm"
+              disabled={!personA || !personB}
+              className="gap-2 border-2 border-gray-300 hover:bg-gray-100"
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+              Swap
+            </Button>
+          </div>
 
-        {/* Person B */}
-        <div className="p-6 border border-gray-200 rounded-lg hover:shadow-lg transition-shadow">
-          <div className="space-y-3">
-            <div className="text-sm font-semibold text-gray-600">
-              {language === 'gujarati' ? 'વ્યક્તિ ૨' : language === 'hindi' ? 'व्यक्ति 2' : 'Person 2'}
-            </div>
+          {/* Person B Selection */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              👤 Person B
+            </label>
             {personB ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border-2 border-blue-300 shadow-sm">
                 {personB.profilePictureUrl && (
                   <img
                     src={personB.profilePictureUrl}
                     alt={personB.name}
-                    className="w-12 h-12 rounded-full object-cover"
+                    className="w-14 h-14 rounded-full object-cover border-2 border-blue-400"
                   />
                 )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{personB.name}</p>
-                  <p className="text-xs text-gray-600">{personB.surname}</p>
+                <div className="flex-1">
+                  <p className="font-bold text-lg">{personB.name} {personB.surname}</p>
+                  {personB.family && (
+                    <p className="text-sm text-gray-600">{personB.family}</p>
+                  )}
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPersonBModal(true)}
+                  className="text-blue-600 border-blue-600 hover:bg-blue-100"
+                >
+                  Change
+                </Button>
               </div>
             ) : (
-              <div className="text-center py-4 text-gray-500">
-                <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
-              </div>
+              <Button
+                onClick={() => setShowPersonBModal(true)}
+                className="w-full py-8 text-lg font-semibold rounded-lg border-2 border-dashed border-blue-300 hover:bg-blue-50 hover:border-blue-500"
+                variant="outline"
+              >
+                <Search className="w-5 h-5 mr-2" />
+                Select Person B
+              </Button>
             )}
-            <button
-              onClick={() => setSelectingFor('b')}
-              className="w-full px-3 py-2 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              {personB ? 'બદલો' : 'પસંદ કરો'}
-            </button>
           </div>
-        </div>
-      </div>
 
-      {/* Error */}
-      {error && (
-        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-red-900">{error}</p>
-        </div>
-      )}
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              onClick={handleFindRelationship}
+              disabled={!personA || !personB || finding}
+              className="flex-1 py-6 text-lg font-semibold bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              size="lg"
+            >
+              {finding ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Finding...
+                </>
+              ) : (
+                <>
+                  🔍 Find Relationship
+                </>
+              )}
+            </Button>
+            {(personA || personB) && (
+              <Button
+                onClick={handleClear}
+                variant="outline"
+                className="px-6"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3">
-        <button
-          onClick={handleFindRelationship}
-          disabled={!personA || !personB || finding}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {finding ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 inline animate-spin" />
-              શોધી રહ્યા છીએ...
-            </>
-          ) : (
-            '🔗 સંબંધ શોધો'
-          )}
-        </button>
-        <button
-          onClick={handleClear}
-          disabled={!personA && !personB && !relationship}
-          className="px-4 py-2 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          ક્લીયર
-        </button>
-      </div>
-
-      {/* Results */}
+      {/* Result */}
       {relationship && (
         <RelationshipPathVisualization
           relationship={relationship}
-          personA={personA}
-          personB={personB}
-          language={language}
+          users={users}
         />
       )}
 
-      {/* User Selection Modal */}
-      {selectingFor && (
-        <UserSelectionModal
-          users={users}
-          onSelect={(user) => {
-            if (selectingFor === 'a') {
-              setPersonA(user);
-            } else {
-              setPersonB(user);
-            }
-            setSelectingFor(null);
-            setRelationship(null);
-          }}
-          onClose={() => setSelectingFor(null)}
-          excludeUser={selectingFor === 'a' ? personB : personA}
-        />
-      )}
+      {/* Modals */}
+      <UserSelectionModal
+        open={showPersonAModal}
+        onClose={() => setShowPersonAModal(false)}
+        onSelect={(user) => {
+          setPersonA(user);
+          setShowPersonAModal(false);
+          setRelationship(null);
+        }}
+        users={users}
+        title="Select Person A"
+        currentSelected={personB}
+      />
+
+      <UserSelectionModal
+        open={showPersonBModal}
+        onClose={() => setShowPersonBModal(false)}
+        onSelect={(user) => {
+          setPersonB(user);
+          setShowPersonBModal(false);
+          setRelationship(null);
+        }}
+        users={users}
+        title="Select Person B"
+        currentSelected={personA}
+      />
     </div>
   );
 }

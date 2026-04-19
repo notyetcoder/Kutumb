@@ -230,3 +230,12 @@ export async function findSiblingsAction(user: User): Promise<User[]> {
     return [];
   }
 }
+export async function getUsers(): Promise<User[]> {
+  try {
+    const { users } = await getAllUsersForPublic(1, 1000);
+    return users;
+  } catch (error) {
+    console.error("getUsers failed:", error);
+    return [];
+  }
+}
