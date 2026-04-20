@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { findUserById, isPerson1Older } from '@/lib/user-utils';
 import Image from 'next/image';
+import UserAvatar from '@/components/UserAvatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Users, Leaf, Edit, Share2 } from 'lucide-react';
 import type { User } from '@/lib/types';
@@ -89,7 +90,7 @@ export default function ProfilePageClient({ user, allUsers, familyData }: { user
             <div className="lg:col-span-1 flex flex-col items-center gap-6 lg:sticky lg:top-24">
               <Card className={cn("w-full bg-card/30 backdrop-blur-lg border-white/10 shadow-lg", user.isDeceased && "bg-muted/50")}>
                 <CardContent className="p-6 flex flex-col items-center text-center">
-                  <Image src={user.profilePictureUrl} alt={user.name} width={150} height={150} data-ai-hint="profile picture" className={cn("rounded-full mb-4 border-4 border-background shadow-lg", user.isDeceased && "border-4 border-amber-400 p-1")} />
+                  <UserAvatar name={user.name} profilePictureUrl={user.profilePictureUrl} size={150} isDeceased={user.isDeceased} className="mb-4" />
                   <h1 className="font-headline text-3xl font-bold text-primary">{user.name} {user.surname}</h1>
                   <DeceasedInfo person={user} />
                   {user.isDeceased ? (

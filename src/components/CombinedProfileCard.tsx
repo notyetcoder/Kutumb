@@ -2,7 +2,7 @@
 'use client';
 import type { User } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
-import Image from 'next/image';
+import UserAvatar from './UserAvatar';
 import { Button } from './ui/button';
 import { Users, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -24,13 +24,12 @@ interface CombinedProfileCardProps {
 
 const PersonDisplay = ({ person, relationship, onNameClick, onCardDoubleClick }: { person: User, relationship: string, onNameClick: (e: React.MouseEvent) => void, onCardDoubleClick: () => void }) => (
     <div className="flex flex-col items-center text-center group cursor-pointer" onDoubleClick={onCardDoubleClick}>
-        <Image
-            src={person.profilePictureUrl}
-            alt={person.name}
-            width={64}
-            height={64}
-            data-ai-hint="profile avatar"
-            className={cn("rounded-full border-2 border-background shadow-md transition-transform group-hover:scale-110", person.isDeceased && "border-4 border-amber-400 p-0.5")}
+        <UserAvatar
+            name={person.name}
+            profilePictureUrl={person.profilePictureUrl}
+            size={64}
+            isDeceased={person.isDeceased}
+            className="transition-transform group-hover:scale-110"
         />
         <p 
             className="font-semibold text-sm mt-2 text-primary hover:underline"
@@ -46,13 +45,11 @@ const ChildDisplay = ({ child }: { child: User }) => {
     const router = useRouter();
     return (
         <div className="flex items-center gap-2 cursor-pointer hover:bg-white/10 p-1 rounded-md transition-colors" onClick={() => router.push(`/profile/${child.id}`)}>
-             <Image
-                src={child.profilePictureUrl}
-                alt={child.name}
-                width={32}
-                height={32}
-                data-ai-hint="profile avatar"
-                className={cn("rounded-full", child.isDeceased && "border-2 border-amber-400 p-0.5")}
+             <UserAvatar
+                name={child.name}
+                profilePictureUrl={child.profilePictureUrl}
+                size={32}
+                isDeceased={child.isDeceased}
             />
             <p className="text-sm font-medium text-foreground truncate">{child.name}</p>
         </div>

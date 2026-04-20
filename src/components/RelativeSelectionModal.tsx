@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import Image from 'next/image';
+import UserAvatar from './UserAvatar';
 import type { User } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -107,13 +107,11 @@ export default function RelativeSelectionModal({
                                 className="flex items-center justify-between w-full text-left p-2 rounded-md cursor-pointer hover:bg-accent hover:text-accent-foreground"
                             >
                                 <div className="flex items-center gap-3">
-                                    <Image
-                                        src={user.profilePictureUrl}
-                                        alt={user.name}
-                                        width={40}
-                                        height={40}
-                                        data-ai-hint="profile avatar"
-                                        className={cn("rounded-full", user.isDeceased && "grayscale")}
+                                    <UserAvatar
+                                        name={user.name}
+                                        profilePictureUrl={user.profilePictureUrl}
+                                        size={40}
+                                        isDeceased={user.isDeceased}
                                     />
                                     <div>
                                         <p className="text-sm font-medium">{user.name} {user.surname}</p>

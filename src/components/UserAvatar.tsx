@@ -1,59 +1,78 @@
 'use client';
 
-import React from 'react';
-import { User } from '@/lib/types';
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
-interface UserAvatarProps {
-  user: User;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  className?: string;
+const PLACEHOLDER_URL = 'https://placehold.co/150x150.png';
+
+function isPlaceholder(url?: string | null): boolean {
+  if (!url) return true;
+  if (url.includes('placehold.co')) return true;
+  return false;
 }
 
-const sizeClasses = {
-  sm: 'w-8 h-8 text-xs',
-  md: 'w-12 h-12 text-sm',
-  lg: 'w-16 h-16 text-lg',
-  xl: 'w-20 h-20 text-2xl',
-};
+// Deterministic color based on name initial
+function getBgColor(name: string): string {
+  const colors = [
+    'bg-violet-600', 'bg-indigo-600', 'bg-blue-600', 'bg-teal-600',
+    'bg-emerald-600', 'bg-amber-600', 'bg-orange-600', 'bg-rose-600',
+  ];
+  const idx = (name.charCodeAt(0) || 0) % colors.length;
+  return colors[idx];
+}
 
-const bgColors = [
-  'bg-red-500',
-  'bg-blue-500',
-  'bg-green-500',
-  'bg-purple-500',
-  'bg-pink-500',
-  'bg-yellow-500',
-  'bg-indigo-500',
-  'bg-cyan-500',
-];
+interface UserAvatarProps {
+  name: string;
+  profilePictureUrl?: string | null;
+  size?: number;       // pixel size, used for width/height on <Image>
+  className?: string;
+  isDeceased?: boolean;
+  priority?: boolean;
+}
 
-export function UserAvatar({ user, size = 'md', className = '' }: UserAvatarProps) {
-  const hasValidImage =
-    user.profilePictureUrl &&
-    user.profilePictureUrl.trim() !== '' &&
-    !user.profilePictureUrl.includes('placeholder');
+export default function UserAvatar({
+  name,
+  profilePictureUrl,
+  size = 100,
+  className,
+  isDeceased,
+  priority = false,
+}: UserAvatarProps) {
+  const showFallback = isPlaceholder(profilePictureUrl);
+  const initial = (name || '?').charAt(0).toUpperCase();
+  const bgColor = getBgColor(initial);
 
-  if (hasValidImage) {
+  const deceasedRing = isDeceased ? 'border-4 border-amber-400 p-0.5' : 'border-4 border-background';
+
+  if (showFallback) {
+    // Render an initial-letter circle
+    const fontSize = Math.max(12, Math.round(size * 0.38));
     return (
-      <img
-        src={user.profilePictureUrl}
-        alt={user.name}
-        className={`${sizeClasses[size]} rounded-full object-cover ${className}`}
-      />
+      <div
+        className={cn(
+          'rounded-full flex items-center justify-center shrink-0 shadow-md text-white font-bold',
+          bgColor,
+          deceasedRing,
+          className,
+        )}
+        style={{ width: size, height: size, fontSize }}
+        aria-label={`Avatar for ${name}`}
+      >
+        {initial}
+      </div>
     );
   }
 
-  // First-letter fallback
-  const firstLetter = user.name.charAt(0).toUpperCase();
-  const bgColorIndex = (user.id.charCodeAt(0) + user.id.charCodeAt(1)) % bgColors.length;
-  const bgColor = bgColors[bgColorIndex];
-
   return (
-    <div
-      className={`${sizeClasses[size]} ${bgColor} rounded-full flex items-center justify-center font-bold text-white ${className}`}
-      title={user.name}
-    >
-      {firstLetter}
-    </div>
+    <Image
+      src={profilePictureUrl!}
+      alt={`Profile of ${name}`}
+      width={size}
+      height={size}
+      priority={priority}
+      loading={priority ? 'eager' : 'lazy'}
+      data-ai-hint="profile avatar"
+      className={cn('rounded-full shadow-md object-cover', deceasedRing, className)}
+    />
   );
 }

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import MainHeader from '@/components/MainHeader';
 import Footer from '@/components/Footer';
-import { ArrowRight, UserPlus, Search } from 'lucide-react';
+import { ArrowRight, UserPlus, Search, GitMerge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getAllUsersForPublic as getUsers } from '@/actions/users';
 import ProfileCarousel from '@/components/ProfileCarousel';
@@ -59,6 +59,11 @@ export default async function Home() {
                                 <UserPlus /> Register a Profile
                             </Link>
                         </Button>
+                        <Button asChild variant="outline" size="lg" className="bg-background/50">
+                            <Link href="/relationships" aria-label="Find the relationship between two community members">
+                                <GitMerge /> Find Connection
+                            </Link>
+                        </Button>
                     </div>
                 </section>
 
@@ -80,12 +85,18 @@ export default async function Home() {
                                 Our platform is designed to bring our community closer, one connection at a time.
                              </p>
                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
                             <FeatureCard 
                                 href="/explore"
                                 icon={<Search className="h-8 w-8 text-primary" />}
                                 title="Explore Connections"
                                 description="Visually navigate through generations and discover how families are interconnected within the community."
+                            />
+                            <FeatureCard 
+                                href="/relationships"
+                                icon={<GitMerge className="h-8 w-8 text-primary" />}
+                                title="Find Relation"
+                                description="Select any two people and instantly discover how they are related — with Gujarati, Hindi and English names."
                             />
                             <FeatureCard 
                                 href="/register"

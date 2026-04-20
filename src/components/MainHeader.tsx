@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from '@/components/Logo';
-import { UserPlus, Search, Mail, Shield } from 'lucide-react';
+import { UserPlus, Search, Mail, Shield, GitMerge } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
@@ -42,6 +42,10 @@ export default function MainHeader() {
                     <div className="ml-auto flex items-center gap-1 sm:gap-2">
                         <NavIconButton href="/explore" label="Explore Community">
                             <Search />
+                        </NavIconButton>
+
+                        <NavIconButton href="/relationships" label="Find Connection">
+                            <GitMerge />
                         </NavIconButton>
 
                         <NavIconButton href="/contact" label="Contact Us">
