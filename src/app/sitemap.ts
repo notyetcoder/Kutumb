@@ -5,8 +5,8 @@ import { getAllUsersForPublic as getUsers } from '@/actions/users';
 export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://vasudha-connect.web.app';
-  const allUsers = await getUsers();
+  const baseUrl = 'https://vasu-dha.vercel.app';
+  const { users: allUsers } = await getUsers(1, 10000);
 
   const profileUrls = allUsers.map((user) => ({
     url: `${baseUrl}/profile/${user.id}`,
@@ -39,6 +39,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/relationships`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.7,
     },
     ...profileUrls,
   ];

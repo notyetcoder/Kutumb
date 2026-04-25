@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import Image from 'next/image';
+import UserAvatar from '@/components/UserAvatar';
 import { findUserById } from '@/lib/user-utils';
 
 export default function RegisterPage() {
@@ -167,13 +167,10 @@ export default function RegisterPage() {
                 </DialogHeader>
                 <div className="space-y-4">
                      <div className="flex flex-col items-center space-y-4 p-4 rounded-lg bg-muted/50">
-                         <Image 
-                            src={croppedImageUrl || 'https://placehold.co/150x150.png'} 
-                            alt="Profile Preview" 
-                            width={100} 
-                            height={100} 
-                            className="rounded-full border-2"
-                            data-ai-hint="profile avatar"
+                         <UserAvatar
+                            name={pendingData?.name || 'U'}
+                            profilePictureUrl={croppedImageUrl || null}
+                            size={100}
                         />
                         <div className="w-full text-center">
                             <p className="font-bold text-lg">{getConstructedFullName()}</p>

@@ -186,6 +186,18 @@ export const getAllUsersForAdmin = async (page: number = 1, pageSize: number = 5
     return { users: data || [], total: count || 0 };
 };
 
+// Fetch a single user by ID — used to avoid bulk fetches in actions
+export const getUserById = async (userId: string): Promise<User | null> => {
+    const supabaseAdmin = createAdminClient();
+    const { data, error } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+    if (error || !data) return null;
+    return data as User;
+};
+
 export const createUser = async (userData: Omit<User, 'id'>): Promise<ActionResponse> => {
     // For anonymous user creation, we must use the anon client for RLS to work correctly.
     const supabaseAnon = createAnonClient();
@@ -227,7 +239,9 @@ export const updateUser = async (userToUpdate: User): Promise<ActionResponse> =>
             return { success: false, message: uploadError.message };
         }
     } else if (!finalPayload.profilePictureUrl) {
-        finalPayload.profilePictureUrl = 'https://placehold.co/150x150.png';
+        // Don't overwrite with placeholder — just remove the field from the update payload
+        // so the existing DB value is preserved
+        delete (finalPayload as any).profilePictureUrl;
     }
 
     const { data: originalUser, error: fetchError } = await supabaseAdmin

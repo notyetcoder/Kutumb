@@ -2,7 +2,7 @@
 'use client';
 import type { User } from '@/lib/types';
 import { Card, CardContent } from './ui/card';
-import Image from 'next/image';
+import UserAvatar from './UserAvatar';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
@@ -22,7 +22,7 @@ const RelativeCard = ({ person, relationship }: { person: User; relationship: st
   return (
     <Card className="bg-background hover:bg-muted transition-colors cursor-pointer" onClick={handleNavigate}>
       <CardContent className="p-2 flex items-center gap-3">
-        <Image src={person.profilePictureUrl} alt={person.name} width={40} height={40} data-ai-hint="profile avatar" className={cn("rounded-full", person.isDeceased && "grayscale")} />
+        <UserAvatar name={person.name} profilePictureUrl={person.profilePictureUrl} size={40} isDeceased={person.isDeceased} />
         <div>
           <p className="font-semibold text-sm leading-tight">{person.name} {person.surname}</p>
           <p className="text-xs text-muted-foreground">{relationship}</p>

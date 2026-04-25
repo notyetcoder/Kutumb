@@ -5,7 +5,7 @@ import { Label } from './ui/label';
 import { Button } from './ui/button';
 import { Link2, X } from 'lucide-react';
 import type { User } from '@/lib/types';
-import Image from 'next/image';
+import UserAvatar from './UserAvatar';
 import { cn } from '@/lib/utils';
 
 interface AutocompleteRelativeInputProps {
@@ -46,7 +46,7 @@ export default function AutocompleteRelativeInput({
                      >
                         {hasSelection ? (
                             <>
-                                <Image src={selectedPerson.profilePictureUrl} alt={selectedPerson.name} width={24} height={24} data-ai-hint="profile avatar" className="rounded-full" />
+                                <UserAvatar name={selectedPerson.name} profilePictureUrl={selectedPerson.profilePictureUrl} size={24} />
                                 <span className="font-medium truncate">{selectedPerson.name}</span>
                                 <span className="text-muted-foreground truncate">{selectedPerson.surname}</span>
                             </>

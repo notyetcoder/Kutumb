@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Checkbox } from '@/components/ui/checkbox';
-import Image from 'next/image';
+import UserAvatar from '@/components/UserAvatar';
 import {
   Search,
   Download,
@@ -608,7 +608,7 @@ export default function ConnectPageClient({ initialUsers, initialTotal, pageSize
                           </TableCell>
                           <TableCell>
                              <div className="flex items-center gap-3">
-                                <Image src={user.profilePictureUrl} alt={user.name} width={36} height={36} className={cn("rounded-full border-2", user.isDeceased && "border-amber-400")} data-ai-hint="profile avatar" />
+                                <UserAvatar name={user.name} profilePictureUrl={user.profilePictureUrl} size={36} isDeceased={user.isDeceased} />
                                 <div>
                                     <div className="flex items-center gap-1.5">
                                       {user.isDeceased && (

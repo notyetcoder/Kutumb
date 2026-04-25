@@ -27,7 +27,7 @@ export interface User {
     spouseName?: string | null;
     birthMonth?: string;
     birthYear?: string;
-    profilePictureUrl: string;
+    profilePictureUrl?: string | null;
     description?: string;
     isDeceased?: boolean;
     deathDate?: string;

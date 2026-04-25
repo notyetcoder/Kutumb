@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import ImageCropperModal from './ImageCropperModal';
 import Image from 'next/image';
+import UserAvatar from './UserAvatar';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
 import AutocompleteRelativeInput from './AutocompleteRelativeInput';
@@ -474,7 +475,8 @@ const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
             case 'father': return potentialRelatives.filter(u => u.gender === 'male');
             case 'mother': return potentialRelatives.filter(u => u.gender === 'female');
             case 'spouse': {
-                 let potentialSpouses = potentialRelatives.filter(u => u.maritalStatus === 'married' && !u.spouseId);
+                 // Show people who are not already linked to another spouse
+                 let potentialSpouses = potentialRelatives.filter(u => !u.spouseId);
                  if (gender === 'male') return potentialSpouses.filter(u => u.gender === 'female');
                  if (gender === 'female') return potentialSpouses.filter(u => u.gender === 'male');
                  return potentialSpouses;
@@ -660,7 +662,7 @@ const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
                 <div className="flex items-center gap-4 p-4 border rounded-lg min-h-[120px]">
                     {pictureToDisplay ? (
                         <>
-                            <Image src={pictureToDisplay} alt="Profile" width={80} height={80} className="rounded-full" data-ai-hint="profile avatar" />
+                            <UserAvatar name={watch('name') || 'U'} profilePictureUrl={pictureToDisplay} size={80} />
                             <div className="space-y-2">
                                 <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                                     <Upload className="mr-2 h-4 w-4" /> Change Picture

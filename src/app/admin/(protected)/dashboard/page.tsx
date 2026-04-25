@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Users, Leaf, AlertTriangle, ArrowRight, Activity, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
+import UserAvatar from '@/components/UserAvatar';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import type { User } from '@/lib/types';
@@ -172,14 +172,7 @@ export default function DashboardPage() {
                         <div className="space-y-4">
                             {recentUsers.map(user => (
                                 <div key={user.id} className="flex items-center group">
-                                    <Image
-                                        src={user.profilePictureUrl}
-                                        alt={user.name}
-                                        width={40}
-                                        height={40}
-                                        className={cn("rounded-full border-2 border-white/20 group-hover:scale-110 transition-transform", user.isDeceased && 'border-amber-400 p-0.5')}
-                                        data-ai-hint="profile avatar"
-                                    />
+                                    <UserAvatar name={user.name} profilePictureUrl={user.profilePictureUrl} size={40} isDeceased={user.isDeceased} className="group-hover:scale-110 transition-transform" />
                                     <div className="ml-4 space-y-1">
                                         <p className="text-sm font-medium leading-none">{user.name} {user.surname}</p>
                                         <p className="text-sm text-muted-foreground">{user.fatherName}</p>

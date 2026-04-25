@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import Image from 'next/image';
+import UserAvatar from './UserAvatar';
 import ImageCropperModal from './ImageCropperModal';
 import { Checkbox } from './ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -676,7 +677,7 @@ const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
                             <div className="flex items-center gap-4 p-4 border rounded-lg min-h-[120px]">
                                 {pictureToDisplay ? (
                                     <>
-                                        <Image src={pictureToDisplay} alt="Profile" width={80} height={80} className="rounded-full" data-ai-hint="profile avatar" />
+                                        <UserAvatar name={watch('name') || 'U'} profilePictureUrl={pictureToDisplay} size={80} />
                                         <div className="space-y-2">
                                             <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                                                 <Upload className="mr-2 h-4 w-4" /> Change Picture

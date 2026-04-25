@@ -15,6 +15,7 @@ import {
   updateDeceasedStatus as dbUpdateDeceasedStatus,
   clearRelation as dbClearRelation,
   getAllUsersForPublic as dbGetAllUsersForPublic,
+  getUserById as dbGetUserById,
 } from '@/lib/data';
 import { findChildren as dbFindChildren, findSiblings as dbFindSiblings } from '@/lib/server-utils';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -46,7 +47,7 @@ export async function createUser(data: any): Promise<ActionResponse> {
       surname: finalSurname || finalMaidenName,
       description: finalDescription,
       family: finalFamily,
-      profilePictureUrl: data.profilePictureUrl || 'https://placehold.co/150x150.png',
+      profilePictureUrl: data.profilePictureUrl || null,
       fatherName: data.fatherId ? null : (data.fatherName || '').split(' ')[0],
       motherName: data.motherId ? null : (data.motherName || '').split(' ')[0],
       spouseName: data.spouseId ? null : (data.spouseName || '').split(' ')[0],
@@ -82,12 +83,12 @@ export async function getAllUsersForAdmin(page: number = 1, pageSize: number = 5
 
 export async function updateUserAction(user: User): Promise<ActionResponse> {
   try {
-    // This is the key fix: Ensure name fields are explicitly set or nulled based on ID fields.
-    const { users: allUsers } = await dbGetAllUsersForAdmin(1, 10000); // We need all users to look up names
-    
-    const father = user.fatherId ? allUsers.find(u => u.id === user.fatherId) : undefined;
-    const mother = user.motherId ? allUsers.find(u => u.id === user.motherId) : undefined;
-    const spouse = user.spouseId ? allUsers.find(u => u.id === user.spouseId) : undefined;
+    // Fetch only the specific users we need by their IDs — no bulk fetch
+    const [father, mother, spouse] = await Promise.all([
+      user.fatherId ? dbGetUserById(user.fatherId) : Promise.resolve(null),
+      user.motherId ? dbGetUserById(user.motherId) : Promise.resolve(null),
+      user.spouseId ? dbGetUserById(user.spouseId) : Promise.resolve(null),
+    ]);
 
     const payload: User = {
         ...user,
@@ -110,10 +111,11 @@ export async function updateUserAction(user: User): Promise<ActionResponse> {
 
 export async function linkSpousesAction(userId1: string, userId2: string): Promise<ActionResponse> {
   try {
-    // Safety check: ensure neither user is already married to someone else.
-    const { users: allUsers } = await dbGetAllUsersForAdmin(1, 10000);
-    const user1 = allUsers.find(u => u.id === userId1);
-    const user2 = allUsers.find(u => u.id === userId2);
+    // Fetch only the two users we need
+    const [user1, user2] = await Promise.all([
+      dbGetUserById(userId1),
+      dbGetUserById(userId2),
+    ]);
 
     if (!user1 || !user2) {
         return { success: false, message: "One or both users not found." };
@@ -122,7 +124,7 @@ export async function linkSpousesAction(userId1: string, userId2: string): Promi
     if (user1.spouseId && user1.spouseId !== user2.id) {
         return { success: false, message: `${user1.name} is already linked to another spouse. Please unlink them first.` };
     }
-     if (user2.spouseId && user2.spouseId !== user1.id) {
+    if (user2.spouseId && user2.spouseId !== user1.id) {
         return { success: false, message: `${user2.name} is already linked to another spouse. Please unlink them first.` };
     }
 

@@ -2,7 +2,6 @@
 'use client';
 import React, { useState } from 'react';
 import { findUserById, isPerson1Older } from '@/lib/user-utils';
-import Image from 'next/image';
 import UserAvatar from '@/components/UserAvatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Users, Leaf, Edit, Share2 } from 'lucide-react';
@@ -106,7 +105,7 @@ export default function ProfilePageClient({ user, allUsers, familyData }: { user
                 <a href={`/profile/${spouse.id}`} className="block w-full group">
                   <Card className={cn("w-full transition-all duration-300 group-hover:shadow-xl group-hover:border-primary/30 bg-card/30 backdrop-blur-lg border-white/10 shadow-lg", spouse.isDeceased && "bg-muted/50")}>
                     <CardContent className="p-6 flex flex-col items-center text-center">
-                      <Image src={spouse.profilePictureUrl} alt={spouse.name} width={120} height={120} data-ai-hint="profile picture" className={cn("rounded-full mb-4 border-4 border-background shadow-lg transition-transform duration-300 group-hover:scale-105", spouse.isDeceased && "border-4 border-amber-400 p-1")} />
+                      <UserAvatar name={spouse.name} profilePictureUrl={spouse.profilePictureUrl} size={120} isDeceased={spouse.isDeceased} className="mb-4 transition-transform duration-300 group-hover:scale-105" />
                       <h2 className="font-headline text-2xl font-bold text-primary/80 group-hover:text-primary">{spouse.name} {spouse.surname}</h2>
                       <DeceasedInfo person={spouse} />
                       <p className="text-muted-foreground mt-1">{spouse.gender === 'male' ? 'Husband' : 'Wife'}</p>
