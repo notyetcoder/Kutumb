@@ -1,9 +1,19 @@
+import { Suspense } from 'react';
 import MainHeader from '@/components/MainHeader';
 import Footer from '@/components/Footer';
 import RelationshipFinderClient from './_components/RelationshipFinderClient';
-import { GitMerge } from 'lucide-react';
+import { GitMerge, Loader2 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
+
+function PageFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 gap-4">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="text-muted-foreground text-sm">Loading…</p>
+    </div>
+  );
+}
 
 export default function RelationshipsPage() {
   return (
@@ -18,13 +28,16 @@ export default function RelationshipsPage() {
             <GitMerge className="h-8 w-8 text-primary" />
           </div>
           <h1 className="font-headline text-4xl sm:text-5xl font-bold tracking-tight text-primary mb-2">
-            Find the Connection
+            Relations &amp; Family Tree
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Select any two people in the community and discover exactly how they are related — with Gujarati, Hindi, and English relationship names.
+            View anyone's full family tree, or discover how any two people in the community are connected — with Gujarati, Hindi and English names.
           </p>
         </div>
-        <RelationshipFinderClient />
+        {/* Suspense required because RelationshipFinderClient uses useSearchParams */}
+        <Suspense fallback={<PageFallback />}>
+          <RelationshipFinderClient />
+        </Suspense>
       </main>
       <Footer />
     </div>

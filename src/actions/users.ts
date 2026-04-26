@@ -233,12 +233,4 @@ export async function findSiblingsAction(user: User): Promise<User[]> {
   }
 }
 
-export async function getUsers(): Promise<User[]> {
-  try {
-    const { users } = await getAllUsersForPublic(1, 5000);
-    return users;
-  } catch (error) {
-    console.error("getUsers failed:", error);
-    return [];
-  }
-}
+

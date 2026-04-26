@@ -59,6 +59,7 @@ import {
     bulkDeleteUsersAction, 
     unlinkSpousesAction, 
     getAllUsersForAdmin, 
+    getAllUsersForPublic,
     clearRelationAction,
     findChildrenAction,
     findSiblingsAction,
@@ -98,6 +99,20 @@ export default function ConnectPageClient({ initialUsers, initialTotal, pageSize
   const [totalUsers, setTotalUsers] = useState(initialTotal);
   const [currentPage, setCurrentPage] = useState(Number(searchParams.page) || 1);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Full dataset for the modal — fetched once in background so admins can
+  // search ALL community members when linking relatives, not just the current page.
+  const [allUsersForModal, setAllUsersForModal] = useState<User[]>(initialUsers);
+  const [modalDataLoaded, setModalDataLoaded] = useState(false);
+
+  useEffect(() => {
+    getAllUsersForPublic(1, 10000)
+      .then(({ users }) => {
+        setAllUsersForModal(users);
+        setModalDataLoaded(true);
+      })
+      .catch(err => console.error('Background full-user fetch failed:', err));
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState(searchParams.search || '');
   const [maritalStatusFilter, setMaritalStatusFilter] = useState(searchParams.marital || 'all');
@@ -328,9 +343,9 @@ export default function ConnectPageClient({ initialUsers, initialTotal, pageSize
 
   const getModalUsers = () => {
     if (!editingRelation || !editingUser) return [];
-    // This is not ideal with pagination, but for now we pass the current page's users.
-    // A better solution would be an async search in the modal.
-    let potentialRelatives = allUsers.filter(u => u.id !== editingUser.id);
+    // Uses allUsersForModal (full dataset, background-fetched) so admins can
+    // search ALL community members — not just the current paginated page.
+    let potentialRelatives = allUsersForModal.filter(u => u.id !== editingUser.id);
     switch (editingRelation) {
         case 'fatherId': return potentialRelatives.filter(u => u.gender === 'male');
         case 'motherId': return potentialRelatives.filter(u => u.gender === 'female');
@@ -728,17 +743,17 @@ export default function ConnectPageClient({ initialUsers, initialTotal, pageSize
               isOpen={isModalOpen} 
               onClose={() => setIsModalOpen(false)} 
               users={getModalUsers()} 
-              allUsers={allUsers} 
+              allUsers={allUsersForModal} 
               onSelect={handleSelectRelative} 
               onManualSave={handleManualSave} 
-              title={getModalTitle()} 
+              title={modalDataLoaded ? getModalTitle() : `Loading all profiles… — ${getModalTitle()}`}
               selectionType={editingRelation ? editingRelation.replace('Id', '') as 'father' | 'mother' | 'spouse' : null}
               surnameToFilter={editingUser.surname}
           />}
           
           {isFormModalOpen && <UserFormModal 
             mode="edit"
-            allUsers={allUsers} 
+            allUsers={allUsersForModal} 
             isOpen={isFormModalOpen} 
             onClose={() => { setIsFormModalOpen(false); setEditingUser(null); }} 
             user={editingUser} 
