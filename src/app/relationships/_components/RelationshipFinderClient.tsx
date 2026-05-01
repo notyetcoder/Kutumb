@@ -128,6 +128,20 @@ function EdgeLabel({ label }: { label: string }) {
 function PathCard({ path, index, isActive, onClick }: {
   path: FoundPath; index: number; isActive: boolean; onClick: () => void;
 }) {
+  // Badge color by relation type
+  const typeBadgeClass: Record<string, string> = {
+    direct:           'bg-blue-500/20 text-blue-300',
+    grandparent:      'bg-purple-500/20 text-purple-300',
+    grandchild:       'bg-purple-500/20 text-purple-300',
+    'uncle-aunt':     'bg-amber-500/20 text-amber-300',
+    'nephew-niece':   'bg-amber-500/20 text-amber-300',
+    'uncle-aunt-child':'bg-teal-500/20 text-teal-300',
+    'in-law':         'bg-pink-500/20 text-pink-300',
+    extended:         'bg-orange-500/20 text-orange-300',
+    distant:          'bg-gray-500/20 text-gray-400',
+  };
+  const badgeClass = typeBadgeClass[path.type] ?? 'bg-gray-500/20 text-gray-400';
+
   return (
     <div
       onClick={onClick}
@@ -138,19 +152,35 @@ function PathCard({ path, index, isActive, onClick }: {
           : 'border-white/10 bg-card/20 hover:border-primary/40',
       )}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      {/* Header row */}
+      <div className="flex items-start justify-between mb-3 gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-            Connection {index + 1}
+            {index + 1}
           </span>
-          <span className="text-xs text-muted-foreground">{path.distance} step{path.distance !== 1 ? 's' : ''}</span>
+          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', badgeClass)}>
+            {path.type}
+          </span>
+          <span className="text-xs text-muted-foreground border border-white/10 px-2 py-0.5 rounded-full">
+            {path.side}
+          </span>
+          <span className="text-xs text-muted-foreground">{path.distance} પગલાં</span>
         </div>
+        {/* Primary Gujarati label */}
         <div className="text-right">
-          <p className="text-sm font-bold text-primary">{path.labels.gujarati}</p>
+          <p className="text-base font-bold text-primary leading-tight">{path.labels.gujarati}</p>
           <p className="text-xs text-muted-foreground">{path.labels.english}</p>
         </div>
       </div>
-      {/* Horizontal chain */}
+
+      {/* Gujarati path explanation */}
+      {path.gujaratiPath && (
+        <p className="text-xs text-muted-foreground/70 mb-3 italic">
+          {path.gujaratiPath}
+        </p>
+      )}
+
+      {/* Horizontal chain of people */}
       <div className="overflow-x-auto">
         <div className="flex items-center min-w-max gap-0">
           {path.steps.map((step, i) => (
@@ -173,7 +203,9 @@ function PathCard({ path, index, isActive, onClick }: {
           ))}
         </div>
       </div>
-      <p className="text-xs text-muted-foreground mt-2 text-right">{path.labels.hindi}</p>
+
+      {/* Hindi label footer */}
+      <p className="text-xs text-muted-foreground/60 mt-2 text-right">{path.labels.hindi}</p>
     </div>
   );
 }
@@ -251,7 +283,8 @@ function ConnectionFinder({ users, loading }: { users: User[]; loading: boolean 
               {result.paths.length === 1 ? '1 Connection Found' : `${result.paths.length} Connections Found`}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Nearest: <span className="font-semibold text-primary">{result.paths[0].labels.gujarati}</span>
+              નજીકનો: <span className="font-semibold text-primary">{result.paths[0].labels.gujarati}</span>
+              <span className="text-xs text-muted-foreground ml-1">({result.paths[0].side})</span>
             </p>
           </div>
 
@@ -266,7 +299,7 @@ function ConnectionFinder({ users, loading }: { users: User[]; loading: boolean 
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'border-white/20 text-muted-foreground hover:border-primary/40',
                   )}>
-                  {i + 1} · {p.labels.gujarati}
+                  {i + 1} · {p.labels.gujarati} · {p.side}
                 </button>
               ))}
             </div>
