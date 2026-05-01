@@ -1,22 +1,27 @@
 /**
  * relationship-engine.ts
  *
- * BFS-based relationship path finder.
- * Labelling uses PATTERN matching on the edge-type sequence,
- * NOT distance (depth) alone — so it scales correctly.
+ * Gujarati family relationship finder using BFS + pattern-based labelling.
  *
- * Edge types in a path step:
- *   'father' | 'mother' | 'son' | 'daughter' | 'spouse'
+ * RULES:
+ *  — No English word "cousin" anywhere in output.
+ *  — Cousin-equivalents use the full Gujarati descriptive form:
+ *      [uncle/aunt] + નો/ની + દીકરો/દીકરી + ભાઈ/બહેન
+ *  — Side detection from the FIRST edge step:
+ *      father first  → પિતૃ પક્ષ
+ *      mother first  → માતૃ પક્ષ
+ *      spouse first  → સસરિયું પક્ષ
+ *      child/self    → સ્વ પક્ષ
+ *  — Fallback: "દૂરનો સગો (પિતૃ/માતૃ/સસરિયું પક્ષ)"
  *
- * Pattern = the sequence of edge types from personA → personB.
- * Example: ['father', 'son'] = sibling (up to father, down to his other son)
+ * Output per path: { labels: { gujarati, hindi, english }, side, type, gujaratiPath }
  */
 
 import { User } from './types';
 import { isPerson1Older } from './user-utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TYPES
+// EXPORTED TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface PathStep {
@@ -27,81 +32,223 @@ export interface PathStep {
   edgeLabel: string;
 }
 
+export type RelationSide =
+  | 'પિતૃ પક્ષ'      // father side
+  | 'માતૃ પક્ષ'      // mother side
+  | 'સસરિયું પક્ષ'   // spouse/in-law side
+  | 'સ્વ પક્ષ';      // direct / self
+
+export type RelationType =
+  | 'direct'       // parent, child, sibling, spouse
+  | 'grandparent'  // dada, dadi, nana, nani, pardada...
+  | 'grandchild'   // pautra, dohitra...
+  | 'uncle-aunt'   // kaka, foi, mama, masi + their spouses
+  | 'nephew-niece' // bhatrijo, bhatiji, bhano, bhani
+  | 'uncle-aunt-child' // kakano dikro bhai, foino dikro bhai etc.
+  | 'in-law'       // sasro, sasu, jamai, vahu, salo, sali, jeth, devar...
+  | 'extended'     // one generation beyond uncle-aunt children
+  | 'distant';     // too far — duro sago
+
+export interface FoundPath {
+  steps: PathStep[];
+  relationshipKey: string;
+  labels: {
+    gujarati: string;   // primary display — always Gujarati
+    hindi: string;
+    english: string;
+  };
+  gujaratiPath: string;   // human-readable Gujarati path e.g. "પિતા → કાકા → તેમનો દીકરો"
+  side: RelationSide;
+  type: RelationType;
+  distance: number;
+}
+
 export interface RelationshipResult {
   found: boolean;
   paths: FoundPath[];
 }
 
-export interface FoundPath {
-  steps: PathStep[];
-  relationshipKey: string;
-  labels: { gujarati: string; hindi: string; english: string };
-  distance: number;
+// ─────────────────────────────────────────────────────────────────────────────
+// SIDE DETECTOR
+// ─────────────────────────────────────────────────────────────────────────────
+
+function detectSide(edgeTypes: string[]): RelationSide {
+  const first = edgeTypes[0];
+  if (!first || first === 'son' || first === 'daughter') return 'સ્વ પક્ષ';
+  if (first === 'father') return 'પિતૃ પક્ષ';
+  if (first === 'mother') return 'માતૃ પક્ષ';
+  if (first === 'spouse') return 'સસરિયું પક્ષ';
+  return 'સ્વ પક્ષ';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LABELS
+// GUJARATI PATH BUILDER
+// builds a readable Gujarati explanation of the traversal steps
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LABELS: Record<string, { gujarati: string; hindi: string; english: string }> = {
-  self:                         { gujarati: 'પોતે',              hindi: 'स्वयं',          english: 'Self' },
-  father:                       { gujarati: 'પિતા / બાપ',        hindi: 'पिता',           english: 'Father' },
-  mother:                       { gujarati: 'માતા / બા',          hindi: 'माता',           english: 'Mother' },
-  son:                          { gujarati: 'દીકરો',              hindi: 'बेटा',           english: 'Son' },
-  daughter:                     { gujarati: 'દીકરી',              hindi: 'बेटी',           english: 'Daughter' },
-  husband:                      { gujarati: 'પતિ',                hindi: 'पति',            english: 'Husband' },
-  wife:                         { gujarati: 'પત્ની',              hindi: 'पत्नी',          english: 'Wife' },
-  elder_brother:                { gujarati: 'મોટા ભાઈ',           hindi: 'बड़े भाई',        english: 'Elder Brother (Mota Bhai)' },
-  younger_brother:              { gujarati: 'નાના ભાઈ',           hindi: 'छोटे भाई',        english: 'Younger Brother (Nana Bhai)' },
-  brother:                      { gujarati: 'ભાઈ',                hindi: 'भाई',            english: 'Brother' },
-  elder_sister:                 { gujarati: 'મોટી બહેન',          hindi: 'बड़ी बहन',        english: 'Elder Sister (Moti Ben)' },
-  younger_sister:               { gujarati: 'નાની બહેન',          hindi: 'छोटी बहन',        english: 'Younger Sister (Nani Ben)' },
-  sister:                       { gujarati: 'બહેન',               hindi: 'बहन',            english: 'Sister' },
-  half_brother:                 { gujarati: 'સાવકા ભાઈ',          hindi: 'सौतेला भाई',     english: 'Half Brother' },
-  half_sister:                  { gujarati: 'સાવકી બહેન',         hindi: 'सौतेली बहन',     english: 'Half Sister' },
-  paternal_grandfather:         { gujarati: 'દાદા',               hindi: 'दादा',           english: 'Paternal Grandfather (Dada)' },
-  paternal_grandmother:         { gujarati: 'દાદી',               hindi: 'दादी',           english: 'Paternal Grandmother (Dadi)' },
-  maternal_grandfather:         { gujarati: 'નાના',               hindi: 'नाना',           english: 'Maternal Grandfather (Nana)' },
-  maternal_grandmother:         { gujarati: 'નાની',               hindi: 'नानी',           english: 'Maternal Grandmother (Nani)' },
-  paternal_great_grandfather:   { gujarati: 'પરદાદા',             hindi: 'परदादा',         english: 'Paternal Great-Grandfather (Par-dada)' },
-  paternal_great_grandmother:   { gujarati: 'પરદાદી',             hindi: 'परदादी',         english: 'Paternal Great-Grandmother (Par-dadi)' },
-  maternal_great_grandfather:   { gujarati: 'પરનાના',             hindi: 'परनाना',         english: 'Maternal Great-Grandfather' },
-  maternal_great_grandmother:   { gujarati: 'પરનાની',             hindi: 'परनानी',         english: 'Maternal Great-Grandmother' },
-  grandson_via_son:             { gujarati: 'પૌત્ર',              hindi: 'पोता',           english: "Grandson — Son's Son (Pota)" },
-  granddaughter_via_son:        { gujarati: 'પૌત્રી',             hindi: 'पोती',           english: "Granddaughter — Son's Daughter (Poti)" },
-  grandson_via_daughter:        { gujarati: 'દોહિત્ર',            hindi: 'नाती',           english: "Grandson — Daughter's Son (Nati)" },
-  granddaughter_via_daughter:   { gujarati: 'દોહિત્રી',           hindi: 'नातिन',          english: "Granddaughter — Daughter's Daughter (Natini)" },
-  paternal_uncle:               { gujarati: 'કાકા',               hindi: 'चाचा',           english: 'Paternal Uncle (Kaka)' },
-  paternal_uncle_wife:          { gujarati: 'કાકી',               hindi: 'काकी',           english: "Paternal Uncle's Wife (Kaki)" },
-  paternal_aunt:                { gujarati: 'ફોઈ',                hindi: 'बुआ',            english: 'Paternal Aunt (Foi)' },
-  paternal_aunt_husband:        { gujarati: 'ફૂફા',               hindi: 'फूफा',           english: "Paternal Aunt's Husband (Fua)" },
-  maternal_uncle:               { gujarati: 'મામા',               hindi: 'मामा',           english: 'Maternal Uncle (Mama)' },
-  maternal_uncle_wife:          { gujarati: 'મામી',               hindi: 'मामी',           english: "Maternal Uncle's Wife (Mami)" },
-  maternal_aunt:                { gujarati: 'માસી',               hindi: 'मौसी',           english: 'Maternal Aunt (Masi)' },
-  maternal_aunt_husband:        { gujarati: 'માસા',               hindi: 'मौसा',           english: "Maternal Aunt's Husband (Masa)" },
-  father_in_law:                { gujarati: 'સસરા',               hindi: 'ससुर',           english: 'Father-in-Law (Sasra)' },
-  mother_in_law:                { gujarati: 'સાસુ',               hindi: 'सास',            english: 'Mother-in-Law (Sasu)' },
-  son_in_law:                   { gujarati: 'જમાઈ',               hindi: 'दामाद',          english: 'Son-in-Law (Jamai)' },
-  daughter_in_law:              { gujarati: 'પુત્રવધૂ',            hindi: 'बहू',            english: 'Daughter-in-Law (Vahu)' },
-  wife_brother:                 { gujarati: 'સાળો',               hindi: 'साला',           english: "Wife's Brother (Salo)" },
-  wife_sister:                  { gujarati: 'સાળી',               hindi: 'साली',           english: "Wife's Sister (Sali)" },
-  husband_elder_brother:        { gujarati: 'જેઠ',                hindi: 'जेठ',            english: "Husband's Elder Brother (Jeth)" },
-  husband_younger_brother:      { gujarati: 'દિયર',               hindi: 'देवर',           english: "Husband's Younger Brother (Devar)" },
-  husband_sister:               { gujarati: 'નણંદ',               hindi: 'ननद',            english: "Husband's Sister (Nanad)" },
-  sister_husband:               { gujarati: 'જીજાજી / બનેવી',     hindi: 'जीजा',           english: "Sister's Husband (Banevi/Jijaji)" },
-  brother_wife:                 { gujarati: 'ભાભી',               hindi: 'भाभी',           english: "Brother's Wife (Bhabi)" },
-  nanad_husband:                { gujarati: 'નંદોઈ',              hindi: 'नंदोई',          english: "Husband's Sister's Husband (Nandoi)" },
-  cousin_male:                  { gujarati: 'ભાઈ (ફઈ/કાકા/મામા/માસીના)', hindi: 'भाई (चचेरे/ममेरे)', english: 'Cousin Brother (Bhai)' },
-  cousin_female:                { gujarati: 'બહેન (ફઈ/કાકા/મામા/માસીની)', hindi: 'बहन (चचेरी/ममेरी)', english: 'Cousin Sister (Ben)' },
-  nephew_brother_son:           { gujarati: 'ભત્રીજો',            hindi: 'भतीजा',          english: "Brother's Son (Bhatijo)" },
-  niece_brother_daughter:       { gujarati: 'ભત્રીજી',            hindi: 'भतीजी',          english: "Brother's Daughter (Bhatiji)" },
-  nephew_sister_son:            { gujarati: 'ભાણો',               hindi: 'भांजा',          english: "Sister's Son (Bhanja)" },
-  niece_sister_daughter:        { gujarati: 'ભાણી',               hindi: 'भांजी',          english: "Sister's Daughter (Bhanji)" },
-  distant_relative:             { gujarati: 'સગો/સગી',            hindi: 'रिश्तेदार',      english: 'Distant Relative' },
+const EDGE_GUJARATI: Record<string, string> = {
+  father:   'પિતા',
+  mother:   'માતા',
+  son:      'દીકરો',
+  daughter: 'દીકરી',
+  spouse:   'જીવનસાથી',
 };
 
-function lbl(key: string) {
-  return LABELS[key] ?? LABELS['distant_relative'];
+function buildGujaratiPath(pathIds: string[], edgeTypes: string[], userMap: Map<string, User>): string {
+  const parts: string[] = [];
+  for (let i = 0; i < pathIds.length; i++) {
+    const user = userMap.get(pathIds[i]);
+    if (!user) continue;
+    const edgeIn = i === 0 ? '' : (EDGE_GUJARATI[edgeTypes[i - 1]] ?? edgeTypes[i - 1]);
+    if (i === 0) {
+      parts.push(user.name);
+    } else {
+      parts.push(`${edgeIn}(${user.name})`);
+    }
+  }
+  return parts.join(' → ');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LABEL BUILDER — returns gujarati, hindi, english strings
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface LabelSet { gujarati: string; hindi: string; english: string }
+
+function direct(g: string, h: string, e: string): LabelSet {
+  return { gujarati: g, hindi: h, english: e };
+}
+
+// All named relationships
+const NAMED: Record<string, LabelSet> = {
+  self:                       direct('પોતે',                'स्वयं',          'Self'),
+  father:                     direct('પિતા / બાપ',          'पिता',           'Father'),
+  mother:                     direct('માતા / બા',            'माता',           'Mother'),
+  son:                        direct('દીકરો',                'बेटा',           'Son'),
+  daughter:                   direct('દીકરી',                'बेटी',           'Daughter'),
+  husband:                    direct('પતિ',                  'पति',            'Husband'),
+  wife:                       direct('પત્ની',                'पत्नी',          'Wife'),
+  elder_brother:              direct('મોટા ભાઈ',             'बड़े भाई',        'Elder Brother'),
+  younger_brother:            direct('નાના ભાઈ',             'छोटे भाई',        'Younger Brother'),
+  brother:                    direct('ભાઈ',                  'भाई',            'Brother'),
+  elder_sister:               direct('મોટી બહેન',            'बड़ी बहन',        'Elder Sister'),
+  younger_sister:             direct('નાની બહેન',            'छोटी बहन',        'Younger Sister'),
+  sister:                     direct('બહેન',                 'बहन',            'Sister'),
+  half_brother:               direct('સાવકા ભાઈ',            'सौतेला भाई',     'Half Brother'),
+  half_sister:                direct('સાવકી બહેન',           'सौतेली बहन',     'Half Sister'),
+  paternal_grandfather:       direct('દાદા',                 'दादा',           'Paternal Grandfather (Dada)'),
+  paternal_grandmother:       direct('દાદી',                 'दादी',           'Paternal Grandmother (Dadi)'),
+  maternal_grandfather:       direct('નાના',                 'नाना',           'Maternal Grandfather (Nana)'),
+  maternal_grandmother:       direct('નાની',                 'नानी',           'Maternal Grandmother (Nani)'),
+  pardada:                    direct('પરદાદા',               'परदादा',         'Paternal Great-Grandfather'),
+  pardadi:                    direct('પરદાદી',               'परदादी',         'Paternal Great-Grandmother'),
+  parnana:                    direct('પરનાના',               'परनाना',         'Maternal Great-Grandfather'),
+  parnani:                    direct('પરનાની',               'परनानी',         'Maternal Great-Grandmother'),
+  grandson_son:               direct('પૌત્ર',                'पोता',           "Grandson (Son's Son)"),
+  granddaughter_son:          direct('પૌત્રી',               'पोती',           "Granddaughter (Son's Daughter)"),
+  grandson_daughter:          direct('દોહિત્ર',              'नाती',           "Grandson (Daughter's Son)"),
+  granddaughter_daughter:     direct('દોહિત્રી',             'नातिन',          "Granddaughter (Daughter's Daughter)"),
+  kaka:                       direct('કાકા',                 'चाचा',           'Paternal Uncle (Kaka)'),
+  kaki:                       direct('કાકી',                 'काकी',           "Paternal Uncle's Wife (Kaki)"),
+  foi:                        direct('ફોઈ',                  'बुआ',            'Paternal Aunt (Foi)'),
+  fuwa:                       direct('ફુઆ',                  'फूफा',           "Paternal Aunt's Husband (Fuwa)"),
+  mama:                       direct('મામા',                 'मामा',           'Maternal Uncle (Mama)'),
+  mami:                       direct('મામી',                 'मामी',           "Maternal Uncle's Wife (Mami)"),
+  masi:                       direct('માસી',                 'मौसी',           'Maternal Aunt (Masi)'),
+  masa:                       direct('માસા',                 'मौसा',           "Maternal Aunt's Husband (Masa)"),
+  // Nephews / Nieces
+  bhatrijo:                   direct('ભત્રીજો',              'भतीजा',          "Brother's Son (Bhatrijo)"),
+  bhatiji:                    direct('ભત્રીજી',              'भतीजी',          "Brother's Daughter (Bhatiji)"),
+  bhano:                      direct('ભાણો',                 'भांजा',          "Sister's Son (Bhano)"),
+  bhani:                      direct('ભાણી',                 'भांजी',          "Sister's Daughter (Bhani)"),
+  // In-laws
+  sasro:                      direct('સસરો',                 'ससुर',           'Father-in-Law (Sasro)'),
+  sasu:                       direct('સાસુ',                  'सास',            'Mother-in-Law (Sasu)'),
+  jamai:                      direct('જમાઈ',                 'दामाद',          'Son-in-Law (Jamai)'),
+  vahu:                       direct('વહુ',                   'बहू',            'Daughter-in-Law (Vahu)'),
+  salo:                       direct('સાળો',                 'साला',           "Wife's Brother (Salo)"),
+  sali:                       direct('સાળી',                 'साली',           "Wife's Sister (Sali)"),
+  jeth:                       direct('જેઠ',                  'जेठ',            "Husband's Elder Brother (Jeth)"),
+  devar:                      direct('દિયર',                 'देवर',           "Husband's Younger Brother (Devar)"),
+  nanad:                      direct('નણંદ',                 'ननद',            "Husband's Sister (Nanad)"),
+  banevi:                     direct('બનેવી',                'जीजाजी',         "Sister's Husband (Banevi)"),
+  bhabhi:                     direct('ભાભી',                 'भाभी',           "Brother's Wife (Bhabhi)"),
+  nandoi:                     direct('નંદોઈ',                'नंदोई',          "Husband's Sister's Husband (Nandoi)"),
+};
+
+function lbl(key: string): LabelSet {
+  return NAMED[key] ?? { gujarati: 'સગો', hindi: 'रिश्तेदार', english: 'Relative' };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COUSIN-EQUIVALENT LABEL BUILDER
+// Produces the full Gujarati descriptive form, never using English "cousin"
+// Format: [uncle/aunt Gujarati name] + નો/ની + દીકરો/દીકરી + ભાઈ/બહેન
+// ─────────────────────────────────────────────────────────────────────────────
+
+type CousinSource = 'kaka' | 'foi' | 'mama' | 'masi';
+
+function buildCousinLabel(source: CousinSource, targetGender: 'male' | 'female'): LabelSet {
+  // Gujarati possessive: male noun → નો, female noun → ની
+  // kaka (m) → કાકાનો/ની, mama (m) → મામાનો/ની, foi (f) → ફોઈનો/ની, masi (f) → માસીનો/ની
+  const sourceMap: Record<CousinSource, { gu: string; hi: string; en: string; possessive: 'no' | 'ni' }> = {
+    kaka: { gu: 'કાકા',  hi: 'काका',  en: "Kaka's",  possessive: 'no' },
+    foi:  { gu: 'ફોઈ',   hi: 'बुआ',   en: "Foi's",   possessive: 'ni' },
+    mama: { gu: 'મામા',  hi: 'मामा',  en: "Mama's",  possessive: 'no' },
+    masi: { gu: 'માસી',  hi: 'मौसी',  en: "Masi's",  possessive: 'ni' },
+  };
+
+  const s = sourceMap[source];
+  const pos = s.possessive === 'no' ? 'નો' : 'ની';
+  const childGu = targetGender === 'male' ? 'દીકરો ભાઈ' : 'દીકરી બહેન';
+  const childHi = targetGender === 'male' ? 'का बेटा भाई' : 'की बेटी बहन';
+  const childEn = targetGender === 'male' ? 'Son (Brother)' : 'Daughter (Sister)';
+
+  // Special case: Masi's son also has the compact term "મસિયાઈ ભાઈ"
+  let compactNote = '';
+  if (source === 'masi' && targetGender === 'male')  compactNote = ' (મસિયાઈ ભાઈ)';
+  if (source === 'masi' && targetGender === 'female') compactNote = ' (મસિયાઈ બહેન)';
+
+  return {
+    gujarati: `${s.gu}${pos} ${childGu}${compactNote}`,
+    hindi:    `${s.hi} ${childHi}`,
+    english:  `${s.en} ${childEn}`,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXTENDED LABEL BUILDER (one level beyond uncle-aunt children)
+// Format: [cousin label] + નો દીકરો/ભાઈ or ની દીકરી/બહેન
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildExtendedLabel(
+  source: CousinSource,
+  intermediaryGender: 'male' | 'female',
+  targetGender: 'male' | 'female'
+): LabelSet {
+  const cousinBase = buildCousinLabel(source, intermediaryGender);
+  // Possessive suffix based on intermediary gender
+  const pos = intermediaryGender === 'male' ? 'નો' : 'ની';
+  const childGu = targetGender === 'male' ? 'દીકરો' : 'દીકરી';
+  const childEn = targetGender === 'male' ? 'Son' : 'Daughter';
+
+  return {
+    gujarati: `${cousinBase.gujarati} ${pos} ${childGu}`,
+    hindi:    `${cousinBase.hindi} का ${targetGender === 'male' ? 'बेटा' : 'बेटी'}`,
+    english:  `${cousinBase.english}'s ${childEn}`,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DISTANT FALLBACK
+// ─────────────────────────────────────────────────────────────────────────────
+
+function distantLabel(side: RelationSide, steps: number): LabelSet {
+  return {
+    gujarati: `દૂરનો સગો (${side})`,
+    hindi:    `दूर के रिश्तेदार (${side})`,
+    english:  `Distant Relative — ${side} (${steps} steps)`,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,7 +258,7 @@ function lbl(key: string) {
 interface BFSNode {
   userId: string;
   path: string[];
-  edgeTypes: string[];  // edge type leading INTO each node: 'father'|'mother'|'son'|'daughter'|'spouse'
+  edgeTypes: string[];
 }
 
 const MAX_DEPTH = 8;
@@ -132,14 +279,12 @@ function buildChildrenMap(allUsers: User[]): Map<string, string[]> {
   return map;
 }
 
-interface Neighbor { id: string; edgeType: string }
-
 function getNeighbors(
   user: User,
   userMap: Map<string, User>,
   childrenMap: Map<string, string[]>
-): Neighbor[] {
-  const out: Neighbor[] = [];
+): Array<{ id: string; edgeType: string }> {
+  const out: Array<{ id: string; edgeType: string }> = [];
   if (user.fatherId && userMap.has(user.fatherId))
     out.push({ id: user.fatherId, edgeType: 'father' });
   if (user.motherId && userMap.has(user.motherId))
@@ -154,101 +299,110 @@ function getNeighbors(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PATTERN-BASED LABELLER
+// CORE PATTERN LABELLER
+// reads the edge-type sequence → returns labels + type
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Reads the edge-type SEQUENCE (pattern) from A to B and maps it to a
- * relationship key. Gender of A, B, and intermediaries is used where needed.
- */
+interface Labelled {
+  key: string;
+  labels: LabelSet;
+  type: RelationType;
+}
+
 function labelByPattern(
   personA: User,
   personB: User,
-  edgeTypes: string[],         // e.g. ['father', 'son']
+  edgeTypes: string[],
   pathIds: string[],
-  userMap: Map<string, User>
-): { key: string; labels: { gujarati: string; hindi: string; english: string } } {
-
+  userMap: Map<string, User>,
+  side: RelationSide
+): Labelled {
   const pattern = edgeTypes.join('/');
   const gB = personB.gender;
   const gA = personA.gender;
-
-  // Helper: get user at path position i
   const at = (i: number) => userMap.get(pathIds[i]);
 
-  // ── Distance 1 ──────────────────────────────────────────────────────────
+  // ── Distance 1 ─────────────────────────────────────────────────────────
   switch (pattern) {
-    case 'father':   return { key: 'father',  labels: lbl('father')  };
-    case 'mother':   return { key: 'mother',  labels: lbl('mother')  };
-    case 'son':      return { key: 'son',     labels: lbl('son')     };
-    case 'daughter': return { key: 'daughter',labels: lbl('daughter')};
+    case 'father':   return { key: 'father',   labels: lbl('father'),   type: 'direct' };
+    case 'mother':   return { key: 'mother',   labels: lbl('mother'),   type: 'direct' };
+    case 'son':      return { key: 'son',      labels: lbl('son'),      type: 'direct' };
+    case 'daughter': return { key: 'daughter', labels: lbl('daughter'), type: 'direct' };
     case 'spouse':
       return gB === 'male'
-        ? { key: 'husband', labels: lbl('husband') }
-        : { key: 'wife',    labels: lbl('wife')    };
+        ? { key: 'husband', labels: lbl('husband'), type: 'direct' }
+        : { key: 'wife',    labels: lbl('wife'),    type: 'direct' };
   }
 
-  // ── Distance 2 ──────────────────────────────────────────────────────────
+  // ── Distance 2 ─────────────────────────────────────────────────────────
   switch (pattern) {
     // Grandparents
-    case 'father/father': return { key: 'paternal_grandfather', labels: lbl('paternal_grandfather') };
-    case 'father/mother': return { key: 'paternal_grandmother', labels: lbl('paternal_grandmother') };
-    case 'father/spouse': return gB === 'female'
-      ? { key: 'paternal_grandmother', labels: lbl('paternal_grandmother') }
-      : { key: 'paternal_grandfather', labels: lbl('paternal_grandfather') };
-    case 'mother/father': return { key: 'maternal_grandfather',  labels: lbl('maternal_grandfather')  };
-    case 'mother/mother': return { key: 'maternal_grandmother',  labels: lbl('maternal_grandmother')  };
-    case 'mother/spouse': return gB === 'male'
-      ? { key: 'maternal_grandfather', labels: lbl('maternal_grandfather') }
-      : { key: 'maternal_grandmother', labels: lbl('maternal_grandmother') };
+    case 'father/father': return { key: 'paternal_grandfather', labels: lbl('paternal_grandfather'), type: 'grandparent' };
+    case 'father/mother': return { key: 'paternal_grandmother', labels: lbl('paternal_grandmother'), type: 'grandparent' };
+    case 'father/spouse':
+      return gB === 'female'
+        ? { key: 'paternal_grandmother', labels: lbl('paternal_grandmother'), type: 'grandparent' }
+        : { key: 'paternal_grandfather', labels: lbl('paternal_grandfather'), type: 'grandparent' };
+    case 'mother/father': return { key: 'maternal_grandfather', labels: lbl('maternal_grandfather'), type: 'grandparent' };
+    case 'mother/mother': return { key: 'maternal_grandmother', labels: lbl('maternal_grandmother'), type: 'grandparent' };
+    case 'mother/spouse':
+      return gB === 'male'
+        ? { key: 'maternal_grandfather', labels: lbl('maternal_grandfather'), type: 'grandparent' }
+        : { key: 'maternal_grandmother', labels: lbl('maternal_grandmother'), type: 'grandparent' };
 
     // Grandchildren
-    case 'son/son':       return { key: 'grandson_via_son',       labels: lbl('grandson_via_son')      };
-    case 'son/daughter':  return { key: 'granddaughter_via_son',  labels: lbl('granddaughter_via_son') };
-    case 'daughter/son':  return { key: 'grandson_via_daughter',  labels: lbl('grandson_via_daughter') };
-    case 'daughter/daughter': return { key: 'granddaughter_via_daughter', labels: lbl('granddaughter_via_daughter') };
+    case 'son/son':           return { key: 'grandson_son',          labels: lbl('grandson_son'),          type: 'grandchild' };
+    case 'son/daughter':      return { key: 'granddaughter_son',     labels: lbl('granddaughter_son'),     type: 'grandchild' };
+    case 'daughter/son':      return { key: 'grandson_daughter',     labels: lbl('grandson_daughter'),     type: 'grandchild' };
+    case 'daughter/daughter': return { key: 'granddaughter_daughter',labels: lbl('granddaughter_daughter'),type: 'grandchild' };
 
-    // Siblings (via shared parent)
+    // Siblings via shared parent — with elder/younger logic
     case 'father/son':
     case 'father/daughter':
     case 'mother/son':
     case 'mother/daughter': {
-      // Sibling — determine elder/younger using DOB
+      // Check if this is a half-sibling (only one shared parent)
+      const sharesFather = personA.fatherId && personA.fatherId === personB.fatherId;
+      const sharesMother = personA.motherId && personA.motherId === personB.motherId;
+      if (sharesFather && !sharesMother || !sharesFather && sharesMother) {
+        // half sibling
+        return gB === 'male'
+          ? { key: 'half_brother', labels: lbl('half_brother'), type: 'direct' }
+          : { key: 'half_sister',  labels: lbl('half_sister'),  type: 'direct' };
+      }
       const isAOlder = isPerson1Older(personA, personB);
       if (gB === 'male') {
-        if (isAOlder === false) return { key: 'elder_brother',   labels: lbl('elder_brother')   };
-        if (isAOlder === true)  return { key: 'younger_brother', labels: lbl('younger_brother') };
-        return { key: 'brother', labels: lbl('brother') };
+        if (isAOlder === false) return { key: 'elder_brother',   labels: lbl('elder_brother'),   type: 'direct' };
+        if (isAOlder === true)  return { key: 'younger_brother', labels: lbl('younger_brother'), type: 'direct' };
+        return { key: 'brother', labels: lbl('brother'), type: 'direct' };
       } else {
-        if (isAOlder === false) return { key: 'elder_sister',   labels: lbl('elder_sister')   };
-        if (isAOlder === true)  return { key: 'younger_sister', labels: lbl('younger_sister') };
-        return { key: 'sister', labels: lbl('sister') };
+        if (isAOlder === false) return { key: 'elder_sister',   labels: lbl('elder_sister'),   type: 'direct' };
+        if (isAOlder === true)  return { key: 'younger_sister', labels: lbl('younger_sister'), type: 'direct' };
+        return { key: 'sister', labels: lbl('sister'), type: 'direct' };
       }
     }
 
     // In-laws via spouse
-    case 'spouse/father': return { key: 'father_in_law', labels: lbl('father_in_law') };
-    case 'spouse/mother': return { key: 'mother_in_law', labels: lbl('mother_in_law') };
+    case 'spouse/father': return { key: 'sasro', labels: lbl('sasro'), type: 'in-law' };
+    case 'spouse/mother': return { key: 'sasu',  labels: lbl('sasu'),  type: 'in-law' };
 
-    // Spouse's siblings
+    // Spouse's siblings (via shared grandparent traversal)
     case 'spouse/son':
     case 'spouse/daughter': {
       if (gA === 'male') {
         return gB === 'male'
-          ? { key: 'wife_brother', labels: lbl('wife_brother') }
-          : { key: 'wife_sister',  labels: lbl('wife_sister')  };
+          ? { key: 'salo', labels: lbl('salo'), type: 'in-law' }
+          : { key: 'sali', labels: lbl('sali'), type: 'in-law' };
       } else {
-        // female user: husband's sibling
-        const midUser = at(1)!;
-        const husbandBirthYear = at(1) ? parseInt(at(1)!.birthYear ?? '0') : 0;
-        const bBirthYear = parseInt(personB.birthYear ?? '0');
+        // female user — husband's sibling
+        const hub = at(1);
         if (gB === 'male') {
-          const isHusbandOlder = isPerson1Older(at(1)!, personB);
-          if (isHusbandOlder === true)  return { key: 'husband_younger_brother', labels: lbl('husband_younger_brother') };
-          if (isHusbandOlder === false) return { key: 'husband_elder_brother',   labels: lbl('husband_elder_brother')   };
-          return { key: 'husband_younger_brother', labels: lbl('husband_younger_brother') };
+          const olderResult = hub ? isPerson1Older(hub, personB) : null;
+          if (olderResult === true)  return { key: 'devar', labels: lbl('devar'), type: 'in-law' };
+          if (olderResult === false) return { key: 'jeth',  labels: lbl('jeth'),  type: 'in-law' };
+          return { key: 'devar', labels: lbl('devar'), type: 'in-law' };
         } else {
-          return { key: 'husband_sister', labels: lbl('husband_sister') };
+          return { key: 'nanad', labels: lbl('nanad'), type: 'in-law' };
         }
       }
     }
@@ -256,114 +410,179 @@ function labelByPattern(
     // Child-in-law
     case 'son/spouse':
       return gB === 'female'
-        ? { key: 'daughter_in_law', labels: lbl('daughter_in_law') }
-        : { key: 'son_in_law',      labels: lbl('son_in_law')      };
+        ? { key: 'vahu',  labels: lbl('vahu'),  type: 'in-law' }
+        : { key: 'jamai', labels: lbl('jamai'), type: 'in-law' };
     case 'daughter/spouse':
       return gB === 'male'
-        ? { key: 'son_in_law',      labels: lbl('son_in_law')      }
-        : { key: 'daughter_in_law', labels: lbl('daughter_in_law') };
+        ? { key: 'jamai', labels: lbl('jamai'), type: 'in-law' }
+        : { key: 'vahu',  labels: lbl('vahu'),  type: 'in-law' };
   }
 
-  // ── Distance 3 ──────────────────────────────────────────────────────────
+  // ── Distance 3 ─────────────────────────────────────────────────────────
   switch (pattern) {
     // Great grandparents
-    case 'father/father/father': return { key: 'paternal_great_grandfather', labels: lbl('paternal_great_grandfather') };
-    case 'father/father/mother': return { key: 'paternal_great_grandmother', labels: lbl('paternal_great_grandmother') };
-    case 'mother/father/father': return { key: 'maternal_great_grandfather', labels: lbl('maternal_great_grandfather') };
-    case 'mother/mother/mother': return { key: 'maternal_great_grandmother', labels: lbl('maternal_great_grandmother') };
+    case 'father/father/father': return { key: 'pardada', labels: lbl('pardada'), type: 'grandparent' };
+    case 'father/father/mother': return { key: 'pardadi', labels: lbl('pardadi'), type: 'grandparent' };
+    case 'father/mother/father': return { key: 'pardada', labels: lbl('pardada'), type: 'grandparent' };
+    case 'father/mother/mother': return { key: 'pardadi', labels: lbl('pardadi'), type: 'grandparent' };
+    case 'mother/father/father': return { key: 'parnana', labels: lbl('parnana'), type: 'grandparent' };
+    case 'mother/father/mother': return { key: 'parnani', labels: lbl('parnani'), type: 'grandparent' };
+    case 'mother/mother/father': return { key: 'parnana', labels: lbl('parnana'), type: 'grandparent' };
+    case 'mother/mother/mother': return { key: 'parnani', labels: lbl('parnani'), type: 'grandparent' };
 
-    // Uncles & aunts (parent's sibling)
+    // Paternal uncles/aunts (father's siblings)
+    // Path: father → dada/dadi → their child (who is not the father)
     case 'father/father/son':
     case 'father/father/daughter':
     case 'father/mother/son':
     case 'father/mother/daughter':
       return gB === 'male'
-        ? { key: 'paternal_uncle', labels: lbl('paternal_uncle') }
-        : { key: 'paternal_aunt',  labels: lbl('paternal_aunt')  };
+        ? { key: 'kaka', labels: lbl('kaka'), type: 'uncle-aunt' }
+        : { key: 'foi',  labels: lbl('foi'),  type: 'uncle-aunt' };
 
+    // Maternal uncles/aunts (mother's siblings)
     case 'mother/father/son':
     case 'mother/father/daughter':
     case 'mother/mother/son':
     case 'mother/mother/daughter':
       return gB === 'male'
-        ? { key: 'maternal_uncle', labels: lbl('maternal_uncle') }
-        : { key: 'maternal_aunt',  labels: lbl('maternal_aunt')  };
+        ? { key: 'mama', labels: lbl('mama'), type: 'uncle-aunt' }
+        : { key: 'masi', labels: lbl('masi'), type: 'uncle-aunt' };
 
     // Uncle/Aunt spouses
     case 'father/father/son/spouse':
     case 'father/mother/son/spouse':
-      return gB === 'female' ? { key: 'paternal_uncle_wife',   labels: lbl('paternal_uncle_wife')   }
-                             : { key: 'paternal_aunt_husband', labels: lbl('paternal_aunt_husband') };
+      // father's brother's spouse
+      return gB === 'female'
+        ? { key: 'kaki', labels: lbl('kaki'), type: 'uncle-aunt' }
+        : { key: 'fuwa', labels: lbl('fuwa'), type: 'uncle-aunt' };
+
     case 'father/father/daughter/spouse':
     case 'father/mother/daughter/spouse':
-      return gB === 'male'   ? { key: 'paternal_aunt_husband', labels: lbl('paternal_aunt_husband') }
-                             : { key: 'paternal_uncle_wife',   labels: lbl('paternal_uncle_wife')   };
+      // father's sister's spouse
+      return gB === 'male'
+        ? { key: 'fuwa', labels: lbl('fuwa'), type: 'uncle-aunt' }
+        : { key: 'kaki', labels: lbl('kaki'), type: 'uncle-aunt' };
+
     case 'mother/father/son/spouse':
     case 'mother/mother/son/spouse':
-      return gB === 'female' ? { key: 'maternal_uncle_wife',   labels: lbl('maternal_uncle_wife')   }
-                             : { key: 'maternal_aunt_husband', labels: lbl('maternal_aunt_husband') };
+      // mother's brother's spouse
+      return gB === 'female'
+        ? { key: 'mami', labels: lbl('mami'), type: 'uncle-aunt' }
+        : { key: 'masa', labels: lbl('masa'), type: 'uncle-aunt' };
 
-    // Nephew / Niece (sibling's child)
+    case 'mother/father/daughter/spouse':
+    case 'mother/mother/daughter/spouse':
+      // mother's sister's spouse
+      return gB === 'male'
+        ? { key: 'masa', labels: lbl('masa'), type: 'uncle-aunt' }
+        : { key: 'mami', labels: lbl('mami'), type: 'uncle-aunt' };
+
+    // Nephews / Nieces (sibling's children)
     case 'father/son/son':
-    case 'father/son/daughter':
     case 'mother/son/son':
-    case 'mother/son/daughter': {
-      // via brother
+    case 'father/son/daughter':
+    case 'mother/son/daughter':
       return gB === 'male'
-        ? { key: 'nephew_brother_son',      labels: lbl('nephew_brother_son')      }
-        : { key: 'niece_brother_daughter',  labels: lbl('niece_brother_daughter')  };
-    }
-    case 'father/daughter/son':
-    case 'father/daughter/daughter':
-    case 'mother/daughter/son':
-    case 'mother/daughter/daughter': {
-      // via sister
-      return gB === 'male'
-        ? { key: 'nephew_sister_son',      labels: lbl('nephew_sister_son')      }
-        : { key: 'niece_sister_daughter',  labels: lbl('niece_sister_daughter')  };
-    }
+        ? { key: 'bhatrijo', labels: lbl('bhatrijo'), type: 'nephew-niece' }
+        : { key: 'bhatiji',  labels: lbl('bhatiji'),  type: 'nephew-niece' };
 
-    // Sister's husband / Brother's wife
-    case 'father/daughter/spouse':
-    case 'mother/daughter/spouse':
-      return { key: 'sister_husband', labels: lbl('sister_husband') };
+    case 'father/daughter/son':
+    case 'mother/daughter/son':
+    case 'father/daughter/daughter':
+    case 'mother/daughter/daughter':
+      return gB === 'male'
+        ? { key: 'bhano', labels: lbl('bhano'), type: 'nephew-niece' }
+        : { key: 'bhani', labels: lbl('bhani'), type: 'nephew-niece' };
+
+    // Sibling's spouse
     case 'father/son/spouse':
     case 'mother/son/spouse':
-      return { key: 'brother_wife', labels: lbl('brother_wife') };
+      return { key: 'bhabhi', labels: lbl('bhabhi'), type: 'in-law' };
+    case 'father/daughter/spouse':
+    case 'mother/daughter/spouse':
+      return { key: 'banevi', labels: lbl('banevi'), type: 'in-law' };
 
-    // Husband's sister's husband (Nandoi)
+    // Nanad's husband (Nandoi)
     case 'spouse/daughter/spouse':
-    case 'spouse/son/spouse':
       return gA === 'female' && gB === 'male'
-        ? { key: 'nanad_husband', labels: lbl('nanad_husband') }
-        : { key: 'distant_relative', labels: lbl('distant_relative') };
+        ? { key: 'nandoi', labels: lbl('nandoi'), type: 'in-law' }
+        : { key: 'distant', labels: distantLabel(side, edgeTypes.length), type: 'distant' };
   }
 
-  // ── Distance 4 — Cousins ────────────────────────────────────────────────
-  // Pattern: parent / grandparent-sibling / their-child
-  // e.g. father/father/son/son = paternal uncle's son = cousin
-  const cousinsPatterns = [
-    'father/father/son/', 'father/father/daughter/',
-    'father/mother/son/', 'father/mother/daughter/',
-    'mother/father/son/', 'mother/father/daughter/',
-    'mother/mother/son/', 'mother/mother/daughter/',
-  ];
-  for (const cp of cousinsPatterns) {
-    if (pattern.startsWith(cp) && edgeTypes.length === 4) {
-      return gB === 'male'
-        ? { key: 'cousin_male',   labels: lbl('cousin_male')   }
-        : { key: 'cousin_female', labels: lbl('cousin_female') };
+  // ── Distance 4 — Uncle/Aunt's Children (cousin-equivalents) ────────────
+  // Pattern: [parent] / [grandparent] / [uncle or aunt] / [their child]
+  // We read the uncle/aunt (position 2 in path, which is pathIds[2])
+  // to determine which specific term to use.
+
+  if (edgeTypes.length === 4) {
+    const e = edgeTypes;
+    // Must start with father or mother, go through grandparent, then uncle/aunt, then child
+    const startsPaternal = e[0] === 'father';
+    const startsMaternal = e[0] === 'mother';
+    const throughGrandparent = e[1] === 'father' || e[1] === 'mother';
+    const throughUncleAunt = e[2] === 'son' || e[2] === 'daughter';
+    const endsChild = e[3] === 'son' || e[3] === 'daughter';
+
+    if ((startsPaternal || startsMaternal) && throughGrandparent && throughUncleAunt && endsChild) {
+      // The intermediate person at index 2 is the uncle/aunt
+      const uncleOrAunt = at(2);
+      const uncleAuntGender = uncleOrAunt?.gender ?? (e[2] === 'son' ? 'male' : 'female');
+
+      let source: CousinSource;
+      if (startsPaternal) {
+        source = uncleAuntGender === 'male' ? 'kaka' : 'foi';
+      } else {
+        source = uncleAuntGender === 'male' ? 'mama' : 'masi';
+      }
+
+      const cousinLabels = buildCousinLabel(source, gB);
+      return {
+        key: `cousin_${source}_${gB}`,
+        labels: cousinLabels,
+        type: 'uncle-aunt-child',
+      };
     }
   }
 
-  // Fallback
+  // ── Distance 5 — Extended (uncle/aunt's grandchildren) ─────────────────
+  // Pattern: [parent] / [grandparent] / [uncle/aunt] / [their child] / [their grandchild]
+
+  if (edgeTypes.length === 5) {
+    const e = edgeTypes;
+    const startsPaternal = e[0] === 'father';
+    const startsMaternal = e[0] === 'mother';
+    const throughGrandparent = e[1] === 'father' || e[1] === 'mother';
+    const throughUncleAunt = e[2] === 'son' || e[2] === 'daughter';
+    const throughCousinChild = e[3] === 'son' || e[3] === 'daughter';
+    const endsGrandchild = e[4] === 'son' || e[4] === 'daughter';
+
+    if ((startsPaternal || startsMaternal) && throughGrandparent && throughUncleAunt && throughCousinChild && endsGrandchild) {
+      const uncleOrAunt = at(2);
+      const uncleAuntGender = uncleOrAunt?.gender ?? (e[2] === 'son' ? 'male' : 'female');
+      const intermediaryGender: 'male' | 'female' = e[3] === 'son' ? 'male' : 'female';
+
+      let source: CousinSource;
+      if (startsPaternal) {
+        source = uncleAuntGender === 'male' ? 'kaka' : 'foi';
+      } else {
+        source = uncleAuntGender === 'male' ? 'mama' : 'masi';
+      }
+
+      const extLabels = buildExtendedLabel(source, intermediaryGender, gB);
+      return {
+        key: `extended_${source}_${intermediaryGender}_${gB}`,
+        labels: extLabels,
+        type: 'extended',
+      };
+    }
+  }
+
+  // ── Distant fallback ────────────────────────────────────────────────────
   return {
-    key: 'distant_relative',
-    labels: {
-      gujarati: `દૂરના સગા (${edgeTypes.length} પગલાં)`,
-      hindi:    `दूर के रिश्तेदार (${edgeTypes.length} कदम)`,
-      english:  `Distant Relative (${edgeTypes.length} steps)`,
-    },
+    key: 'distant',
+    labels: distantLabel(side, edgeTypes.length),
+    type: 'distant',
   };
 }
 
@@ -377,13 +596,20 @@ export function findAllRelationshipPaths(
   allUsers: User[]
 ): RelationshipResult {
   if (!personA || !personB) return { found: false, paths: [] };
+
   if (personA.id === personB.id) {
     return {
       found: true,
       paths: [{
-        steps: [{ id: personA.id, name: personA.name, gender: personA.gender, profilePictureUrl: personA.profilePictureUrl, edgeLabel: '' }],
+        steps: [{
+          id: personA.id, name: personA.name, gender: personA.gender,
+          profilePictureUrl: personA.profilePictureUrl, edgeLabel: '',
+        }],
         relationshipKey: 'self',
         labels: lbl('self'),
+        gujaratiPath: personA.name,
+        side: 'સ્વ પક્ષ',
+        type: 'direct',
         distance: 0,
       }],
     };
@@ -391,12 +617,10 @@ export function findAllRelationshipPaths(
 
   const userMap     = new Map(allUsers.map(u => [u.id, u]));
   const childrenMap = buildChildrenMap(allUsers);
-
-  const foundPaths: FoundPath[]      = [];
+  const foundPaths: FoundPath[] = [];
   const seenPathSigs = new Set<string>();
 
   const queue: BFSNode[] = [{ userId: personA.id, path: [personA.id], edgeTypes: [] }];
-  // Allow the same node to be visited again if via a DIFFERENT path
   const visitedAtDepth = new Map<string, number>();
   visitedAtDepth.set(personA.id, 0);
 
@@ -409,7 +633,10 @@ export function findAllRelationshipPaths(
       const sig = path.join('>');
       if (!seenPathSigs.has(sig)) {
         seenPathSigs.add(sig);
-        const { key, labels } = labelByPattern(personA, personB, edgeTypes, path, userMap);
+        const side = detectSide(edgeTypes);
+        const { key, labels, type } = labelByPattern(personA, personB, edgeTypes, path, userMap, side);
+        const gujaratiPath = buildGujaratiPath(path, edgeTypes, userMap);
+
         const steps: PathStep[] = path.map((id, i) => {
           const u = userMap.get(id)!;
           return {
@@ -420,7 +647,8 @@ export function findAllRelationshipPaths(
             edgeLabel: i === 0 ? '' : edgeTypes[i - 1],
           };
         });
-        foundPaths.push({ steps, relationshipKey: key, labels, distance: depth });
+
+        foundPaths.push({ steps, relationshipKey: key, labels, gujaratiPath, side, type, distance: depth });
       }
       continue;
     }
